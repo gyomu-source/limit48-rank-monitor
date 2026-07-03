@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>楽天 順位モニター — limit48</title>
+<style>
+:root {
+  --bg: #0A1628;
+  --surface: #0F1F38;
+  --dim: rgba(255,255,255,0.03);
+  --border: rgba(74,144,217,0.14);
+  --text: #D6E4F7;
+  --text-2: #6B8BB0;
+  --accent: #4A90D9;
+  --rakuten: #C8281A;
+  --good: #3ABF8A;
+  --warn: #E8A825;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);min-height:100vh}
+body{color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+
+#app{max-width:820px;margin:0 auto;padding:36px 20px 72px}
+
+/* Header */
+.hd{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:32px;flex-wrap:wrap}
+.hd-eyebrow{font-size:.62rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:5px}
+.hd-title{font-size:1.25rem;font-weight:700;letter-spacing:-.025em}
+.hd-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.hd-updated{font-size:.72rem;color:var(--text-2);font-variant-numeric:tabular-nums}
+.hd-updated span{color:var(--text)}
+
+/* Platform pill */
+.platform{display:inline-flex;align-items:center;gap:6px;padding:4px 10px 4px 8px;background:var(--rakuten);border-radius:3px;font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#fff;margin-bottom:24px}
+.platform-r{width:16px;height:16px;background:#fff;color:var(--rakuten);border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:900;flex-shrink:0}
+
+/* Cards */
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:24px}
+@media(max-width:500px){.grid{grid-template-columns:1fr}}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:24px 20px 18px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;transition:border-color .2s}
+.card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)}
+.card.oor::after{background:var(--warn)}
+
+.card-kw{font-size:.63rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-2)}
+
+.rank-row{display:flex;align-items:baseline;gap:5px;min-height:68px;align-items:center}
+.rank-num{font-size:4.8rem;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.045em;line-height:1;color:#fff;font-feature-settings:"tnum"}
+.rank-unit{font-size:1.05rem;color:var(--text-2);font-weight:500}
+.rank-oor{display:flex;flex-direction:column;gap:3px;min-height:68px;justify-content:center}
+.rank-oor-big{font-size:2.4rem;font-weight:800;color:var(--warn);letter-spacing:-.03em;line-height:1}
+.rank-oor-sub{font-size:.66rem;color:var(--text-2)}
+
+.change{font-size:.72rem;display:flex;align-items:center;gap:4px;color:var(--text-2)}
+.change.up{color:var(--good)}
+.change.dn{color:var(--warn)}
+
+/* Sparkline */
+.sparkwrap{margin-top:4px;border-top:1px solid var(--border);padding-top:10px;height:52px}
+.sparkwrap svg{width:100%;height:36px;overflow:visible;display:block}
+.spark-empty{height:36px;display:flex;align-items:center;justify-content:center;font-size:.62rem;color:var(--text-2);opacity:.6}
+
+/* Action bar */
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:4px;font-size:.78rem;font-weight:600;cursor:pointer;border:none;text-decoration:none;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-ghost{background:var(--dim);border:1px solid var(--border);color:var(--text-2)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* Loading / Error */
+.loading{display:flex;align-items:center;justify-content:center;min-height:200px;font-size:.85rem;color:var(--text-2)}
+.error-box{padding:16px 20px;background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.2);border-radius:4px;font-size:.8rem;color:#F87171;margin-bottom:20px}
+
+/* Status strip */
+.strip{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--dim);border:1px solid var(--border);border-radius:4px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--good);flex-shrink:0;box-shadow:0 0 8px var(--good);animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.strip-txt{font-size:.74rem;color:var(--text-2);line-height:1.5}
+.strip-txt strong{color:var(--text)}
+
+/* Spinner */
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+footer{margin-top:40px;text-align:center;font-size:.6rem;color:var(--text-2);opacity:.5;letter-spacing:.06em}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="hd">
+    <div>
+      <div class="hd-eyebrow">limit48</div>
+      <h1 class="hd-title">楽天 検索順位モニター</h1>
+    </div>
+    <div class="hd-right">
+      <div class="hd-updated">最終チェック <span id="last-check">読み込み中...</span></div>
+    </div>
+  </header>
+
+  <div class="platform"><div class="platform-r">R</div>楽天市場</div>
+
+  <div id="error-area"></div>
+
+  <div class="actions">
+    <button class="btn btn-primary" id="btn-refresh" onclick="loadData()">
+      <span id="refresh-icon">↻</span> 更新
+    </button>
+    <a class="btn btn-ghost" id="btn-actions" href="#" target="_blank">
+      ▶ 今すぐチェック実行
+    </a>
+  </div>
+
+  <div id="main-content"><div class="loading">データを読み込み中...</div></div>
+
+  <div class="strip" style="margin-top:20px">
+    <div class="dot"></div>
+    <div class="strip-txt"><strong>朝7時・夕18時</strong> GitHub Actionsが自動チェック。「今すぐチェック実行」ボタンで即時更新も可能。</div>
+  </div>
+
+  <footer>limit48 EC Management · 楽天ウェブサービス API · GitHub Actions</footer>
+</div>
+
+<script>
+// ─── 設定 ───────────────────────────────────────────────
+// GitHubのユーザー名とリポジトリ名（setup後に編集してください）
+const GITHUB_USER = 'gyomu-source';
+const GITHUB_REPO = 'limit48-rank-monitor';
+const KEYWORDS = ['ファスティング', '酵素ドリンク'];
+// ────────────────────────────────────────────────────────
+
+const actionsUrl = `https://github.com/${GITHUB_USER}/${GITHUB_REPO}/actions/workflows/check.yml`;
+document.getElementById('btn-actions').href = actionsUrl;
+
+let isLoading = false;
+
+async function loadData() {
+  if (isLoading) return;
+  isLoading = true;
+
+  const btn = document.getElementById('btn-refresh');
+  const icon = document.getElementById('refresh-icon');
+  btn.disabled = true;
+  icon.innerHTML = '<span class="spin"></span>';
+
+  const errorArea = document.getElementById('error-area');
+  errorArea.innerHTML = '';
+
+  try {
+    const res = await fetch(`rank_history.json?v=${Date.now()}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const history = await res.json();
+
+    if (!history || history.length === 0) {
+      renderEmpty();
+      return;
+    }
+
+    renderDashboard(history);
+  } catch(e) {
+    errorArea.innerHTML = `<div class="error-box">データ取得エラー: ${e.message}</div>`;
+    document.getElementById('main-content').innerHTML = '';
+  } finally {
+    isLoading = false;
+    btn.disabled = false;
+    icon.textContent = '↻';
+  }
+}
+
+function renderEmpty() {
+  document.getElementById('main-content').innerHTML = '<div class="loading">データがまだありません。「今すぐチェック実行」を押してください。</div>';
+}
+
+function renderDashboard(history) {
+  const latest = history[history.length - 1];
+  document.getElementById('last-check').textContent = `${latest.dateStr} ${latest.timeStr} JST`;
+
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+
+  KEYWORDS.forEach(kw => {
+    const kwHistory = history.map(h => ({
+      d: h.dateStr,
+      t: h.timeStr,
+      r: h.results[kw] ? h.results[kw].rank : null
+    }));
+    const current = latest.results[kw] ? latest.results[kw].rank : null;
+    grid.appendChild(buildCard(kw, current, kwHistory));
+  });
+
+  document.getElementById('main-content').innerHTML = '';
+  document.getElementById('main-content').appendChild(grid);
+
+  // Draw sparklines after layout
+  requestAnimationFrame(() => {
+    KEYWORDS.forEach(kw => {
+      const kwHistory = history.map(h => ({
+        r: h.results[kw] ? h.results[kw].rank : null
+      }));
+      const sv = document.getElementById(`sv-${kw}`);
+      if (sv) drawSpark(sv, kwHistory);
+
+      const current = latest.results[kw] ? latest.results[kw].rank : null;
+      if (current !== null) {
+        const el = document.getElementById(`rn-${kw}`);
+        if (el) animateNum(el, current, 600);
+      }
+    });
+  });
+}
+
+function getChange(history) {
+  const valid = history.filter(h => h.r !== null);
+  if (valid.length < 2) return null;
+  return valid[valid.length - 2].r - valid[valid.length - 1].r; // positive = improved
+}
+
+function changeHTML(change) {
+  if (change === null) return '<span class="change">初回チェック</span>';
+  if (change > 0) return `<span class="change up">▲ ${change}位 上昇</span>`;
+  if (change < 0) return `<span class="change dn">▼ ${Math.abs(change)}位 下降</span>`;
+  return '<span class="change">変動なし</span>';
+}
+
+function buildCard(kw, current, kwHistory) {
+  const oor = current === null;
+  const change = getChange(kwHistory);
+  const hasEnough = kwHistory.filter(h => h.r !== null).length >= 2;
+
+  const card = document.createElement('div');
+  card.className = 'card' + (oor ? ' oor' : '');
+
+  const rankHTML = oor
+    ? `<div class="rank-oor"><div class="rank-oor-big">圏外</div><div class="rank-oor-sub">300位以内に未登場</div></div>`
+    : `<div class="rank-row"><div class="rank-num" id="rn-${kw}">—</div><div class="rank-unit">位</div></div>`;
+
+  const sparkHTML = hasEnough
+    ? `<div class="sparkwrap"><svg id="sv-${kw}" viewBox="0 0 200 36" preserveAspectRatio="none"></svg></div>`
+    : `<div class="sparkwrap"><div class="spark-empty">推移グラフ（データ2件以上で表示）</div></div>`;
+
+  card.innerHTML = `<div class="card-kw">${kw}</div>${rankHTML}${changeHTML(change)}${sparkHTML}`;
+  return card;
+}
+
+function animateNum(el, target, ms) {
+  const start = performance.now();
+  function tick(now) {
+    const t = Math.min((now - start) / ms, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    el.textContent = Math.round(ease * target);
+    if (t < 1) requestAnimationFrame(tick); else el.textContent = target;
+  }
+  requestAnimationFrame(tick);
+}
+
+function drawSpark(svgEl, history) {
+  const pts = history.filter(h => h.r !== null).slice(-20); // 直近20件
+  if (pts.length < 2) return;
+
+  const W = 200, H = 36, PAD = 4;
+  const ranks = pts.map(p => p.r);
+  const lo = Math.min(...ranks), hi = Math.max(...ranks);
+  const rng = hi - lo || 10;
+
+  const toX = i => PAD + (i / (pts.length - 1)) * (W - PAD * 2);
+  const toY = r => PAD + ((r - lo) / rng) * (H - PAD * 2); // low rank = high Y = worse
+
+  let line = '', area = '';
+  pts.forEach((p, i) => {
+    const x = toX(i), y = toY(p.r);
+    if (i === 0) { line = `M ${x} ${y}`; area = `M ${x} ${H} L ${x} ${y}`; }
+    else { line += ` L ${x} ${y}`; area += ` L ${x} ${y}`; }
+  });
+  area += ` L ${toX(pts.length-1)} ${H} Z`;
+
+  const uid = Math.random().toString(36).slice(2,7);
+  svgEl.innerHTML = `
+    <defs>
+      <linearGradient id="g${uid}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#4A90D9" stop-opacity=".3"/>
+        <stop offset="100%" stop-color="#4A90D9" stop-opacity="0"/>
+      </linearGradient>
+    </defs>
+    <path d="${area}" fill="url(#g${uid})"/>
+    <path d="${line}" fill="none" stroke="#4A90D9" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map((p,i) => {
+      const x=toX(i), y=toY(p.r), last=i===pts.length-1;
+      return `<circle cx="${x}" cy="${y}" r="${last?3:2}" fill="${last?'#4A90D9':'rgba(74,144,217,.5)'}"/>`;
+    }).join('')}
+  `;
+}
+
+// 初回ロード
+loadData();
+</script>
+</body>
+</html>
