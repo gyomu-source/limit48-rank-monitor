@@ -48,6 +48,36 @@
     }
   },
   {
+    "timestamp": "2026-07-03T15:59:00.948Z",
+    "dateStr": "07/04",
+    "timeStr": "00:59",
+    "results": {
+      "ファスティング": {
+        "rank": null,
+        "error": "__INITIAL_STATE__ が取得できませんでした（v3 GitHub Actions失敗）"
+      },
+      "酵素ドリンク": {
+        "rank": null,
+        "error": "__INITIAL_STATE__ が取得できませんでした（v3 GitHub Actions失敗）"
+      }
+    }
+  },
+  {
+    "timestamp": "2026-07-04T04:11:32.629Z",
+    "dateStr": "07/04",
+    "timeStr": "13:11",
+    "results": {
+      "ファスティング": {
+        "rank": null,
+        "error": "__INITIAL_STATE__ が取得できませんでした（v3 GitHub Actions失敗）"
+      },
+      "酵素ドリンク": {
+        "rank": null,
+        "error": "__INITIAL_STATE__ が取得できませんでした（v3 GitHub Actions失敗）"
+      }
+    }
+  },
+  {
     "timestamp": "2026-07-04T04:30:42.833Z",
     "dateStr": "07/04",
     "timeStr": "13:30",
