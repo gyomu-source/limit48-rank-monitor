@@ -1,6 +1,5 @@
-// 楽天キーワード順位チェッカー v4
-// __INITIAL_STATE__ JSONから正確な順位を取得
-// v4: HTTPリダイレクト追従 + ブラウザ近似ヘッダー追加（GitHub Actions対応）
+// 楽天キーワード順位チェッカー v5
+// v5追加: PR（広告）件数・純粋順位の記録
 
 const https = require('https');
 const http = require('http');
@@ -46,7 +45,6 @@ function fetchUrl(targetUrl, redirectCount) {
     };
 
     const req = lib.request(options, (res) => {
-      // リダイレクト追従
       if ((res.statusCode === 301 || res.statusCode === 302 ||
            res.statusCode === 307 || res.statusCode === 308)
           && res.headers.location) {
@@ -93,7 +91,67 @@ function parseInitialState(html) {
   }
 }
 
+// PR（広告）アイテムを検出する
+// 戻り値: { prCount, prShopFound, prSource, prIndexes }
+function analyzePR(search) {
+  const result = {
+    prCount: null,     // null = 検出不能
+    prShopFound: false,
+    prSource: 'unknown',
+    prIndexes: [],     // items配列内でPRの位置（prSource=itemFlagの場合のみ）
+  };
+
+  // Strategy 1: 別配列が存在する場合（adItems / sponsoredItems 等）
+  for (const key of ['adItems', 'sponsoredItems', 'promotionItems', 'prItems', 'topItems']) {
+    if (search[key] && Array.isArray(search[key])) {
+      result.prCount = search[key].length;
+      result.prSource = key;
+      result.prShopFound = search[key].some(item => {
+        const url = item.url || item.originalItemUrl || '';
+        return url.includes('/' + SHOP_CODE + '/');
+      });
+      console.log(`  [PR検出] 別配列「${key}」: ${result.prCount}件${result.prShopFound ? ' ★自店PR出稿中' : ''}`);
+      return result;
+    }
+  }
+
+  // Strategy 2: items配列内にadフラグが存在する場合
+  if (search.items && search.items.length > 0) {
+    const firstItem = search.items[0];
+    const adFields = ['adType', 'isAd', 'sponsored', 'adPosition', 'promotionType', 'mediaType'];
+    const hasAdField = adFields.some(f => f in firstItem);
+
+    if (hasAdField) {
+      search.items.forEach((item, idx) => {
+        const isAd = item.adType != null || item.isAd === true ||
+                     item.sponsored === true || item.mediaType === 'ad' ||
+                     item.adPosition != null || item.promotionType != null;
+        if (isAd) {
+          result.prIndexes.push(idx);
+          const url = item.url || item.originalItemUrl || '';
+          if (url.includes('/' + SHOP_CODE + '/')) result.prShopFound = true;
+        }
+      });
+      result.prCount = result.prIndexes.length;
+      result.prSource = 'itemFlag';
+      console.log(`  [PR検出] itemフラグ: ${result.prCount}件${result.prShopFound ? ' ★自店PR出稿中' : ''}`);
+      return result;
+    }
+  }
+
+  // Strategy 3: 検出できなかった場合はデバッグ情報を出力
+  const searchTopKeys = Object.keys(search).slice(0, 20).join(',');
+  const itemSampleKeys = search.items && search.items[0]
+    ? Object.keys(search.items[0]).slice(0, 15).join(',')
+    : 'n/a';
+  console.log(`  [PR未検出] searchKeys: ${searchTopKeys}`);
+  console.log(`  [PR未検出] itemKeys: ${itemSampleKeys}`);
+  return result;
+}
+
 async function findRank(keyword) {
+  let prInfo = null;
+
   for (let page = 1; page <= MAX_PAGES; page++) {
     try {
       const html = await fetchPage(keyword, page);
@@ -109,6 +167,11 @@ async function findRank(keyword) {
         return { rank: null, error: '検索結果データが見つかりません' };
       }
 
+      // ページ1でPR分析
+      if (page === 1) {
+        prInfo = analyzePR(search);
+      }
+
       const pageSize = (search.pagination && search.pagination.pageSize) || 45;
       const offset = (page - 1) * pageSize;
 
@@ -116,8 +179,23 @@ async function findRank(keyword) {
         const item = search.items[i];
         const url = item.url || item.originalItemUrl || '';
         if (url.includes('/' + SHOP_CODE + '/')) {
+          const totalRank = offset + i + 1;
+
+          // 純粋順位の計算
+          // prSource=itemFlag の場合: items配列内にPRが混在 → 自分より前のPR件数を引く
+          // prSource=別配列 の場合: items配列はすでに純粋結果 → そのままが純粋順位
+          let organicRank = totalRank;
+          if (prInfo && prInfo.prSource === 'itemFlag' && page === 1) {
+            const prBeforeUs = prInfo.prIndexes.filter(idx => idx < i).length;
+            organicRank = totalRank - prBeforeUs;
+          }
+
           return {
-            rank: offset + i + 1,
+            rank: totalRank,
+            organicRank,
+            isPR: false,
+            prCount: prInfo ? prInfo.prCount : null,
+            prShopFound: prInfo ? prInfo.prShopFound : false,
             itemName: item.name,
             shopCode: SHOP_CODE,
           };
@@ -131,7 +209,26 @@ async function findRank(keyword) {
       return { rank: null, error: e.message };
     }
   }
-  return { rank: null, error: `${MAX_PAGES}ページ（${MAX_PAGES * 45}位）以内に未登場` };
+
+  // 全ページ検索後: PR枠のみ出稿中（純粋順位は圏外）
+  if (prInfo && prInfo.prShopFound) {
+    return {
+      rank: null,
+      organicRank: null,
+      isPR: true,
+      prCount: prInfo.prCount,
+      prShopFound: true,
+      error: `PR枠のみ出稿中（純粋順位 ${MAX_PAGES * 45}位以内に未登場）`,
+    };
+  }
+
+  return {
+    rank: null,
+    organicRank: null,
+    isPR: false,
+    prCount: prInfo ? prInfo.prCount : null,
+    error: `${MAX_PAGES}ページ（${MAX_PAGES * 45}位）以内に未登場`,
+  };
 }
 
 async function main() {
@@ -147,8 +244,14 @@ async function main() {
     console.log(`  「${kw}」を検索中...`);
     const r = await findRank(kw);
     results[kw] = r;
-    if (r.rank) {
-      console.log(`  → ${r.rank}位`);
+
+    if (r.isPR) {
+      console.log(`  → PR枠のみ出稿中（純粋順位：圏外）PR件数: ${r.prCount}`);
+    } else if (r.rank) {
+      const prInfo = r.prCount !== null ? ` PR${r.prCount}件` : '';
+      const organicInfo = (r.organicRank && r.organicRank !== r.rank)
+        ? ` / 純粋${r.organicRank}位` : '';
+      console.log(`  → ${r.rank}位${organicInfo}${prInfo}`);
     } else {
       console.log(`  → 圏外（${r.error}）`);
     }

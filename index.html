@@ -16,6 +16,7 @@
   --rakuten: #C8281A;
   --good: #3ABF8A;
   --warn: #E8A825;
+  --pr-col: #9B6DFF;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);min-height:100vh}
@@ -42,15 +43,33 @@ body{color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',s
 .card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:24px 20px 18px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;transition:border-color .2s}
 .card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)}
 .card.oor::after{background:var(--warn)}
+.card.is-pr::after{background:var(--pr-col)}
 
 .card-kw{font-size:.63rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-2)}
 
-.rank-row{display:flex;align-items:baseline;gap:5px;min-height:68px;align-items:center}
+/* Rank row with PR badge */
+.rank-row{display:flex;align-items:center;gap:8px;min-height:68px}
 .rank-num{font-size:4.8rem;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.045em;line-height:1;color:#fff;font-feature-settings:"tnum"}
-.rank-unit{font-size:1.05rem;color:var(--text-2);font-weight:500}
+.rank-unit{font-size:1.05rem;color:var(--text-2);font-weight:500;align-self:flex-end;padding-bottom:6px}
 .rank-oor{display:flex;flex-direction:column;gap:3px;min-height:68px;justify-content:center}
 .rank-oor-big{font-size:2.4rem;font-weight:800;color:var(--warn);letter-spacing:-.03em;line-height:1}
 .rank-oor-sub{font-size:.66rem;color:var(--text-2)}
+
+/* PR badge (inline with rank) */
+.pr-badge{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;margin-left:2px;padding-bottom:6px;align-self:flex-end}
+.pr-count{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:rgba(155,109,255,0.15);border:1px solid rgba(155,109,255,0.35);border-radius:3px;font-size:.62rem;font-weight:700;color:var(--pr-col);letter-spacing:.04em;white-space:nowrap}
+.pr-dot{width:5px;height:5px;border-radius:50%;background:var(--pr-col)}
+
+/* PR出稿中（自店がPR枠に入っている）ステート */
+.pr-shop-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;background:rgba(155,109,255,0.2);border:1px solid rgba(155,109,255,0.5);border-radius:3px;font-size:.68rem;font-weight:700;color:var(--pr-col)}
+
+/* 純粋順位 */
+.organic-row{display:flex;align-items:center;gap:6px;font-size:.72rem}
+.organic-label{color:var(--text-2)}
+.organic-val{font-variant-numeric:tabular-nums;font-weight:700}
+.organic-val.good{color:var(--good)}
+.organic-val.norm{color:var(--text)}
+.organic-val.oor{color:var(--warn)}
 
 .change{font-size:.72rem;display:flex;align-items:center;gap:4px;color:var(--text-2)}
 .change.up{color:var(--good)}
@@ -79,6 +98,11 @@ body{color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',s
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
 .strip-txt{font-size:.74rem;color:var(--text-2);line-height:1.5}
 .strip-txt strong{color:var(--text)}
+
+/* PR legend */
+.legend{margin-top:16px;display:flex;gap:16px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:.62rem;color:var(--text-2)}
+.legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
 
 /* Spinner */
 .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
@@ -114,7 +138,13 @@ footer{margin-top:40px;text-align:center;font-size:.6rem;color:var(--text-2);opa
 
   <div id="main-content"><div class="loading">データを読み込み中...</div></div>
 
-  <div class="strip" style="margin-top:20px">
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>表示順位（PR込み全体）</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--good)"></div>純粋順位（PR除く自然検索）</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--pr-col)"></div>PR（広告）件数</div>
+  </div>
+
+  <div class="strip" style="margin-top:16px">
     <div class="dot"></div>
     <div class="strip-txt"><strong>朝7時・夕18時</strong> GitHub Actionsが自動チェック。「今すぐチェック実行」ボタンで即時更新も可能。</div>
   </div>
@@ -123,12 +153,9 @@ footer{margin-top:40px;text-align:center;font-size:.6rem;color:var(--text-2);opa
 </div>
 
 <script>
-// ─── 設定 ───────────────────────────────────────────────
-// GitHubのユーザー名とリポジトリ名（setup後に編集してください）
 const GITHUB_USER = 'gyomu-source';
 const GITHUB_REPO = 'limit48-rank-monitor';
 const KEYWORDS = ['ファスティング', '酵素ドリンク'];
-// ────────────────────────────────────────────────────────
 
 const actionsUrl = `https://github.com/${GITHUB_USER}/${GITHUB_REPO}/actions/workflows/check.yml`;
 document.getElementById('btn-actions').href = actionsUrl;
@@ -143,9 +170,7 @@ async function loadData() {
   const icon = document.getElementById('refresh-icon');
   btn.disabled = true;
   icon.innerHTML = '<span class="spin"></span>';
-
-  const errorArea = document.getElementById('error-area');
-  errorArea.innerHTML = '';
+  document.getElementById('error-area').innerHTML = '';
 
   try {
     const res = await fetch(`rank_history.json?v=${Date.now()}`);
@@ -153,23 +178,20 @@ async function loadData() {
     const history = await res.json();
 
     if (!history || history.length === 0) {
-      renderEmpty();
+      document.getElementById('main-content').innerHTML =
+        '<div class="loading">データがまだありません。「今すぐチェック実行」を押してください。</div>';
       return;
     }
-
     renderDashboard(history);
   } catch(e) {
-    errorArea.innerHTML = `<div class="error-box">データ取得エラー: ${e.message}</div>`;
+    document.getElementById('error-area').innerHTML =
+      `<div class="error-box">データ取得エラー: ${e.message}</div>`;
     document.getElementById('main-content').innerHTML = '';
   } finally {
     isLoading = false;
     btn.disabled = false;
     icon.textContent = '↻';
   }
-}
-
-function renderEmpty() {
-  document.getElementById('main-content').innerHTML = '<div class="loading">データがまだありません。「今すぐチェック実行」を押してください。</div>';
 }
 
 function renderDashboard(history) {
@@ -183,37 +205,38 @@ function renderDashboard(history) {
     const kwHistory = history.map(h => ({
       d: h.dateStr,
       t: h.timeStr,
-      r: h.results[kw] ? h.results[kw].rank : null
+      r: h.results[kw] ? h.results[kw].rank : null,
+      org: h.results[kw] ? (h.results[kw].organicRank || h.results[kw].rank) : null,
     }));
-    const current = latest.results[kw] ? latest.results[kw].rank : null;
-    grid.appendChild(buildCard(kw, current, kwHistory));
+    const currentResult = latest.results[kw] || {};
+    grid.appendChild(buildCard(kw, currentResult, kwHistory));
   });
 
   document.getElementById('main-content').innerHTML = '';
   document.getElementById('main-content').appendChild(grid);
 
-  // Draw sparklines after layout
   requestAnimationFrame(() => {
     KEYWORDS.forEach(kw => {
       const kwHistory = history.map(h => ({
-        r: h.results[kw] ? h.results[kw].rank : null
+        r: h.results[kw] ? (h.results[kw].organicRank || h.results[kw].rank) : null,
       }));
       const sv = document.getElementById(`sv-${kw}`);
       if (sv) drawSpark(sv, kwHistory);
 
-      const current = latest.results[kw] ? latest.results[kw].rank : null;
-      if (current !== null) {
+      const currentResult = latest.results[kw] || {};
+      const displayNum = currentResult.organicRank || currentResult.rank;
+      if (displayNum) {
         const el = document.getElementById(`rn-${kw}`);
-        if (el) animateNum(el, current, 600);
+        if (el) animateNum(el, displayNum, 600);
       }
     });
   });
 }
 
 function getChange(history) {
-  const valid = history.filter(h => h.r !== null);
+  const valid = history.filter(h => h.org !== null);
   if (valid.length < 2) return null;
-  return valid[valid.length - 2].r - valid[valid.length - 1].r; // positive = improved
+  return valid[valid.length - 2].org - valid[valid.length - 1].org;
 }
 
 function changeHTML(change) {
@@ -223,23 +246,88 @@ function changeHTML(change) {
   return '<span class="change">変動なし</span>';
 }
 
-function buildCard(kw, current, kwHistory) {
-  const oor = current === null;
+function buildCard(kw, result, kwHistory) {
+  const rank = result.rank || null;
+  const organicRank = result.organicRank || rank;
+  const isPR = result.isPR === true;
+  const prCount = result.prCount != null ? result.prCount : null;
+  const prShopFound = result.prShopFound === true;
+  const oor = rank === null && !isPR;
+
   const change = getChange(kwHistory);
-  const hasEnough = kwHistory.filter(h => h.r !== null).length >= 2;
+  const hasEnough = kwHistory.filter(h => h.org !== null).length >= 2;
 
   const card = document.createElement('div');
-  card.className = 'card' + (oor ? ' oor' : '');
+  card.className = 'card' + (oor ? ' oor' : '') + (isPR ? ' is-pr' : '');
 
-  const rankHTML = oor
-    ? `<div class="rank-oor"><div class="rank-oor-big">圏外</div><div class="rank-oor-sub">300位以内に未登場</div></div>`
-    : `<div class="rank-row"><div class="rank-num" id="rn-${kw}">—</div><div class="rank-unit">位</div></div>`;
+  // PR件数バッジ（prCountが取得できている場合のみ）
+  const prBadgeHTML = prCount !== null
+    ? `<div class="pr-badge"><div class="pr-count"><div class="pr-dot"></div>PR ${prCount}件</div></div>`
+    : '';
+
+  // 自店PR出稿バッジ
+  const prShopHTML = prShopFound
+    ? `<div class="pr-shop-badge">★ 自店PR出稿中</div>`
+    : '';
+
+  // 表示順位ブロック
+  let rankHTML;
+  if (isPR) {
+    rankHTML = `
+      <div class="rank-oor">
+        <div class="rank-oor-big" style="color:var(--pr-col)">PR出稿中</div>
+        <div class="rank-oor-sub">純粋順位は圏外（${kwHistory.length * 45}位以内に未登場）</div>
+      </div>`;
+  } else if (rank === null) {
+    rankHTML = `
+      <div class="rank-row">
+        <div class="rank-oor">
+          <div class="rank-oor-big">圏外</div>
+          <div class="rank-oor-sub">225位以内に未登場</div>
+        </div>
+        ${prBadgeHTML}
+      </div>`;
+  } else {
+    rankHTML = `
+      <div class="rank-row">
+        <div class="rank-num" id="rn-${kw}">—</div>
+        <div class="rank-unit">位</div>
+        ${prBadgeHTML}
+      </div>`;
+  }
+
+  // 純粋順位行（表示順位とPR件数が両方ある場合のみ意味を持つ）
+  let organicHTML = '';
+  if (!isPR && rank !== null && prCount !== null && prCount > 0) {
+    const diffFromTotal = rank - (organicRank || rank);
+    const cls = (organicRank || rank) <= 10 ? 'good' : 'norm';
+    organicHTML = `
+      <div class="organic-row">
+        <span class="organic-label">純粋</span>
+        <span class="organic-val ${cls}">${organicRank || rank}位</span>
+        ${diffFromTotal > 0 ? `<span class="change" style="font-size:.65rem;color:var(--text-2)">（PR${prCount}件除く）</span>` : ''}
+      </div>`;
+  } else if (!isPR && rank !== null && prCount === null) {
+    // PR未検出 → 純粋順位不明と明示
+    organicHTML = `
+      <div class="organic-row">
+        <span class="organic-label">純粋</span>
+        <span class="organic-val oor">取得中...</span>
+      </div>`;
+  }
 
   const sparkHTML = hasEnough
     ? `<div class="sparkwrap"><svg id="sv-${kw}" viewBox="0 0 200 36" preserveAspectRatio="none"></svg></div>`
     : `<div class="sparkwrap"><div class="spark-empty">推移グラフ（データ2件以上で表示）</div></div>`;
 
-  card.innerHTML = `<div class="card-kw">${kw}</div>${rankHTML}${changeHTML(change)}${sparkHTML}`;
+  card.innerHTML = `
+    <div class="card-kw">${kw}</div>
+    ${rankHTML}
+    ${prShopHTML}
+    ${organicHTML}
+    ${changeHTML(change)}
+    ${sparkHTML}
+  `;
   return card;
 }
 
@@ -255,7 +343,7 @@ function animateNum(el, target, ms) {
 }
 
 function drawSpark(svgEl, history) {
-  const pts = history.filter(h => h.r !== null).slice(-20); // 直近20件
+  const pts = history.filter(h => h.r !== null).slice(-20);
   if (pts.length < 2) return;
 
   const W = 200, H = 36, PAD = 4;
@@ -264,7 +352,7 @@ function drawSpark(svgEl, history) {
   const rng = hi - lo || 10;
 
   const toX = i => PAD + (i / (pts.length - 1)) * (W - PAD * 2);
-  const toY = r => PAD + ((r - lo) / rng) * (H - PAD * 2); // low rank = high Y = worse
+  const toY = r => PAD + ((r - lo) / rng) * (H - PAD * 2);
 
   let line = '', area = '';
   pts.forEach((p, i) => {
@@ -291,7 +379,6 @@ function drawSpark(svgEl, history) {
   `;
 }
 
-// 初回ロード
 loadData();
 </script>
 </body>
