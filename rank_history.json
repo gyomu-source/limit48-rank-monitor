@@ -220,5 +220,30 @@
         "shopCode": "limit48"
       }
     }
+  },
+  {
+    "timestamp": "2026-07-06T22:53:53.845Z",
+    "dateStr": "07/07",
+    "timeStr": "07:53",
+    "results": {
+      "ファスティング": {
+        "rank": 14,
+        "organicRank": 14,
+        "isPR": false,
+        "prCount": null,
+        "prShopFound": false,
+        "itemName": "クーポンで10％OFF！3本以上で専用ボトル付き！2日間だけでOK！リムイット48Plus ファスティング専用 5冠達成 700ml ガイドブック付 コンブチャ 酵素ドリンク 美味しい ファスティング 酵素 ダイエット ドリンク 断食",
+        "shopCode": "limit48"
+      },
+      "酵素ドリンク": {
+        "rank": 23,
+        "organicRank": 23,
+        "isPR": false,
+        "prCount": null,
+        "prShopFound": false,
+        "itemName": "クーポンで10％OFF！3本以上で専用ボトル付き！2日間だけでOK！リムイット48Plus ファスティング専用 5冠達成 700ml ガイドブック付 コンブチャ 酵素ドリンク 美味しい ファスティング 酵素 ダイエット ドリンク 断食",
+        "shopCode": "limit48"
+      }
+    }
   }
 ]
