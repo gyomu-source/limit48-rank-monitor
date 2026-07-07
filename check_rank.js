@@ -136,7 +136,11 @@ async function checkAmazon(keyword) {
           organicRank++;
           // 大文字小文字や表記揺れを考慮
           const lowerTitle = title.toLowerCase();
-          if (lowerTitle.includes(targetBrand.toLowerCase()) || lowerTitle.includes('limit 48') || lowerTitle.includes('limit48') || lowerTitle.includes('the limit')) {
+          const isTarget = lowerTitle.includes('limit') || 
+                           lowerTitle.includes('リムイット') || 
+                           lowerTitle.includes('the limit');
+          
+          if (isTarget) {
             if (!found) {
               targetRank = organicRank;
               targetTotalRank = organicRank + prCount;
