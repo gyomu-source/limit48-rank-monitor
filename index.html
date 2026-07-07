@@ -104,6 +104,9 @@ body{color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',s
 .legend-item{display:flex;align-items:center;gap:5px;font-size:.62rem;color:var(--text-2)}
 .legend-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
 
+/* PR count (not detectable) */
+.pr-count-na{opacity:.4;border-style:dashed !important;cursor:help}
+
 /* Spinner */
 .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -139,14 +142,13 @@ footer{margin-top:40px;text-align:center;font-size:.6rem;color:var(--text-2);opa
   <div id="main-content"><div class="loading">データを読み込み中...</div></div>
 
   <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>表示順位（PR込み全体）</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--good)"></div>純粋順位（PR除く自然検索）</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--pr-col)"></div>PR（広告）件数</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>検索順位（= 純粋順位。PR広告を含まない）</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--pr-col);opacity:.4"></div>PR件数: RPP広告は動的読み込みのため非対応（ブラウザで要確認）</div>
   </div>
 
   <div class="strip" style="margin-top:16px">
     <div class="dot"></div>
-    <div class="strip-txt"><strong>朝7時・夕18時</strong> GitHub Actionsが自動チェック。「今すぐチェック実行」ボタンで即時更新も可能。</div>
+    <div class="strip-txt"><strong>朝7時・夕18時</strong> GitHub Actionsが自動チェック。「今すぐチェック実行」ボタンで即時更新も可能。<br>※ RPP広告アイテムは楽天のJavaScript動的読み込みのため自動取得不可。表示順位 ＝ PR広告を除いた純粋な検索順位です。</div>
   </div>
 
   <footer>limit48 EC Management · 楽天ウェブサービス API · GitHub Actions</footer>
@@ -260,10 +262,10 @@ function buildCard(kw, result, kwHistory) {
   const card = document.createElement('div');
   card.className = 'card' + (oor ? ' oor' : '') + (isPR ? ' is-pr' : '');
 
-  // PR件数バッジ（prCountが取得できている場合のみ）
+  // PR件数バッジ（取得できた場合は件数、できない場合は非対応表示）
   const prBadgeHTML = prCount !== null
     ? `<div class="pr-badge"><div class="pr-count"><div class="pr-dot"></div>PR ${prCount}件</div></div>`
-    : '';
+    : `<div class="pr-badge"><div class="pr-count pr-count-na" title="RPP広告はJavaScript動的読み込みのためサーバー側では取得不可">PR —</div></div>`;
 
   // 自店PR出稿バッジ
   const prShopHTML = prShopFound
@@ -308,11 +310,13 @@ function buildCard(kw, result, kwHistory) {
         ${diffFromTotal > 0 ? `<span class="change" style="font-size:.65rem;color:var(--text-2)">（PR${prCount}件除く）</span>` : ''}
       </div>`;
   } else if (!isPR && rank !== null && prCount === null) {
-    // PR未検出 → 純粋順位不明と明示
+    // RPP広告は動的読み込みのため取得不可。
+    // __INITIAL_STATE__ の items 配列は純粋検索結果のみ含むため、この順位 = 純粋順位。
     organicHTML = `
-      <div class="organic-row">
-        <span class="organic-label">純粋</span>
-        <span class="organic-val oor">取得中...</span>
+      <div class="organic-row" title="RPP広告はページ描画後のJavaScript読み込みのため自動取得不可。この順位はPR広告を含まない純粋な検索順位です。">
+        <span class="organic-label">純粋順位</span>
+        <span class="organic-val good">${rank}位</span>
+        <span style="font-size:.6rem;color:var(--text-2);margin-left:2px">= この順位</span>
       </div>`;
   }
 

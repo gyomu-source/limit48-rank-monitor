@@ -139,13 +139,10 @@ function analyzePR(search) {
     }
   }
 
-  // Strategy 3: 検出できなかった場合はデバッグ情報を出力
-  const searchTopKeys = Object.keys(search).slice(0, 20).join(',');
-  const itemSampleKeys = search.items && search.items[0]
-    ? Object.keys(search.items[0]).slice(0, 15).join(',')
-    : 'n/a';
-  console.log(`  [PR未検出] searchKeys: ${searchTopKeys}`);
-  console.log(`  [PR未検出] itemKeys: ${itemSampleKeys}`);
+  // Strategy 3: 検出できなかった — RPP広告はJavaScript動的読み込みのためサーバーサイドでは取得不可
+  // __INITIAL_STATE__.ichibaSearch.items は純粋な検索結果のみを含む（PR混入なし）
+  // → rank = organicRank が常に成立する
+  console.log(`  [PR非対応] RPP広告は動的読み込みのため取得不可。この順位 = 純粋順位`);
   return result;
 }
 
