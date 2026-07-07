@@ -1,9 +1,9 @@
-name: 楽天 順位チェック
+name: 順位チェック (楽天 & Amazon)
 
 on:
   schedule:
-    - cron: '0 22 * * *'
-    - cron: '0 9 * * *'
+    - cron: '0 22 * * *' # 日本時間 7:00
+    - cron: '0 9 * * *'  # 日本時間 18:00
   workflow_dispatch:
 
 jobs:
@@ -13,12 +13,15 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install puppeteer
+      - name: Install Puppeteer and dependencies
+        run: |
+          npm install
+          npx puppeteer browsers install chrome
 
       - name: 順位チェック実行
         run: node check_rank.js
@@ -28,5 +31,4 @@ jobs:
           git config user.email "github-actions@github.com"
           git config user.name "GitHub Actions"
           git add rank_history.json
-          git diff --staged --quiet || git commit -m "rank update $(TZ='Asia/Tokyo' date +'%Y-%m-%d %H:%M JST')"
-          git push
+          git diff --staged --quiet || (git commit -m "rank update $(TZ='Asia/Tokyo' date +'%Y-%m-%d %H:%M JST')" && git push)
