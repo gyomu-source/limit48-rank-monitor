@@ -2,9 +2,9 @@ name: 楽天 順位チェック
 
 on:
   schedule:
-    - cron: '0 22 * * *'   # 07:00 JST (UTC+9)
-    - cron: '0 9 * * *'    # 18:00 JST
-  workflow_dispatch:         # 手動実行ボタン
+    - cron: '0 22 * * *'
+    - cron: '0 9 * * *'
+  workflow_dispatch:
 
 jobs:
   check:
@@ -17,10 +17,10 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install dependencies
+        run: npm install puppeteer
+
       - name: 順位チェック実行
-        env:
-          RAKUTEN_APP_ID: ${{ secrets.RAKUTEN_APP_ID }}
-          RAKUTEN_ACCESS_KEY: ${{ secrets.RAKUTEN_ACCESS_KEY }}
         run: node check_rank.js
 
       - name: 結果をコミット＆プッシュ
