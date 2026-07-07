@@ -1,5 +1,5 @@
-// 楽天キーワード順位チェッカー v5
-// v5追加: PR（広告）件数・純粋順位の記録
+// 楽天キーワード順位チェッカー v6
+// v6追加: PR件数を考慮したトータル順位の明示的な記録
 
 const https = require('https');
 const http = require('http');
@@ -176,20 +176,18 @@ async function findRank(keyword) {
         const item = search.items[i];
         const url = item.url || item.originalItemUrl || '';
         if (url.includes('/' + SHOP_CODE + '/')) {
-          const totalRank = offset + i + 1;
+          const organicRank = offset + i + 1;
 
-          // 純粋順位の計算
-          // prSource=itemFlag の場合: items配列内にPRが混在 → 自分より前のPR件数を引く
-          // prSource=別配列 の場合: items配列はすでに純粋結果 → そのままが純粋順位
-          let organicRank = totalRank;
-          if (prInfo && prInfo.prSource === 'itemFlag' && page === 1) {
-            const prBeforeUs = prInfo.prIndexes.filter(idx => idx < i).length;
-            organicRank = totalRank - prBeforeUs;
+          // トータル順位（PRを含む順位）の計算
+          // prInfo.prCount が null の場合はPR件数が不明なため、トータル順位 = 純粋順位とする
+          let totalRank = organicRank;
+          if (prInfo && prInfo.prCount !== null) {
+            totalRank = organicRank + prInfo.prCount;
           }
 
           return {
-            rank: totalRank,
-            organicRank,
+            rank: totalRank, // トータル順位
+            organicRank: organicRank, // 純粋順位
             isPR: false,
             prCount: prInfo ? prInfo.prCount : null,
             prShopFound: prInfo ? prInfo.prShopFound : false,
@@ -244,11 +242,10 @@ async function main() {
 
     if (r.isPR) {
       console.log(`  → PR枠のみ出稿中（純粋順位：圏外）PR件数: ${r.prCount}`);
-    } else if (r.rank) {
-      const prInfo = r.prCount !== null ? ` PR${r.prCount}件` : '';
-      const organicInfo = (r.organicRank && r.organicRank !== r.rank)
-        ? ` / 純粋${r.organicRank}位` : '';
-      console.log(`  → ${r.rank}位${organicInfo}${prInfo}`);
+    } else if (r.organicRank) {
+      const prInfo = r.prCount !== null ? ` PR${r.prCount}件` : ' PR不明';
+      const totalInfo = `トータル${r.rank}位`;
+      console.log(`  → 純粋${r.organicRank}位 / ${totalInfo} (${prInfo})`);
     } else {
       console.log(`  → 圏外（${r.error}）`);
     }
