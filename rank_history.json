@@ -420,5 +420,22 @@
         "shopCode": "limit48"
       }
     }
+  },
+  {
+    "timestamp": "2026-07-07T07:02:52.305Z",
+    "dateStr": "07/07",
+    "timeStr": "16:02",
+    "results": {
+      "ファスティング": {
+        "rank": 12,
+        "organicRank": 7,
+        "prCount": 5
+      },
+      "酵素ドリンク": {
+        "rank": 25,
+        "organicRank": 20,
+        "prCount": 5
+      }
+    }
   }
 ]
