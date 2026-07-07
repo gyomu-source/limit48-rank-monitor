@@ -142,13 +142,13 @@ footer{margin-top:40px;text-align:center;font-size:.6rem;color:var(--text-2);opa
   <div id="main-content"><div class="loading">データを読み込み中...</div></div>
 
   <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>検索順位（= 純粋順位。PR広告を含まない）</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>トータル順位（PR広告を含む）</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--pr-col);opacity:.4"></div>PR件数: RPP広告は動的読み込みのため非対応（ブラウザで要確認）</div>
   </div>
 
   <div class="strip" style="margin-top:16px">
     <div class="dot"></div>
-    <div class="strip-txt"><strong>朝7時・夕18時</strong> GitHub Actionsが自動チェック。「今すぐチェック実行」ボタンで即時更新も可能。<br>※ RPP広告アイテムは楽天のJavaScript動的読み込みのため自動取得不可。表示順位 ＝ PR広告を除いた純粋な検索順位です。</div>
+    <div class="strip-txt"><strong>朝7時・夕18時</strong> GitHub Actionsが自動チェック。「今すぐチェック実行」ボタンで即時更新も可能。<br>※ PR広告を含んだ合計の順位を表示します。PR件数が取得できない場合は純粋順位を表示します。</div>
   </div>
 
   <footer>limit48 EC Management · 楽天ウェブサービス API · GitHub Actions</footer>
@@ -207,7 +207,7 @@ function renderDashboard(history) {
     const kwHistory = history.map(h => ({
       d: h.dateStr,
       t: h.timeStr,
-      r: h.results[kw] ? h.results[kw].rank : null,
+      r: h.results[kw] ? (h.results[kw].rank || h.results[kw].organicRank) : null,
       org: h.results[kw] ? (h.results[kw].organicRank || h.results[kw].rank) : null,
     }));
     const currentResult = latest.results[kw] || {};
@@ -220,13 +220,13 @@ function renderDashboard(history) {
   requestAnimationFrame(() => {
     KEYWORDS.forEach(kw => {
       const kwHistory = history.map(h => ({
-        r: h.results[kw] ? (h.results[kw].organicRank || h.results[kw].rank) : null,
+        r: h.results[kw] ? (h.results[kw].rank || h.results[kw].organicRank) : null,
       }));
       const sv = document.getElementById(`sv-${kw}`);
       if (sv) drawSpark(sv, kwHistory);
 
       const currentResult = latest.results[kw] || {};
-      const displayNum = currentResult.organicRank || currentResult.rank;
+      const displayNum = currentResult.rank || currentResult.organicRank;
       if (displayNum) {
         const el = document.getElementById(`rn-${kw}`);
         if (el) animateNum(el, displayNum, 600);
@@ -236,9 +236,9 @@ function renderDashboard(history) {
 }
 
 function getChange(history) {
-  const valid = history.filter(h => h.org !== null);
+  const valid = history.filter(h => h.r !== null);
   if (valid.length < 2) return null;
-  return valid[valid.length - 2].org - valid[valid.length - 1].org;
+  return valid[valid.length - 2].r - valid[valid.length - 1].r;
 }
 
 function changeHTML(change) {
@@ -249,20 +249,20 @@ function changeHTML(change) {
 }
 
 function buildCard(kw, result, kwHistory) {
-  const rank = result.rank || null;
-  const organicRank = result.organicRank || rank;
+  const organicRank = result.organicRank || null;
+  const totalRank = result.rank || organicRank; // PRが取れない場合は純粋順位を代用
   const isPR = result.isPR === true;
   const prCount = result.prCount != null ? result.prCount : null;
   const prShopFound = result.prShopFound === true;
-  const oor = rank === null && !isPR;
+  const oor = totalRank === null && !isPR;
 
   const change = getChange(kwHistory);
-  const hasEnough = kwHistory.filter(h => h.org !== null).length >= 2;
+  const hasEnough = kwHistory.filter(h => h.r !== null).length >= 2;
 
   const card = document.createElement('div');
   card.className = 'card' + (oor ? ' oor' : '') + (isPR ? ' is-pr' : '');
 
-  // PR件数バッジ（取得できた場合は件数、できない場合は非対応表示）
+  // PR件数バッジ
   const prBadgeHTML = prCount !== null
     ? `<div class="pr-badge"><div class="pr-count"><div class="pr-dot"></div>PR ${prCount}件</div></div>`
     : `<div class="pr-badge"><div class="pr-count pr-count-na" title="RPP広告はJavaScript動的読み込みのためサーバー側では取得不可">PR —</div></div>`;
@@ -272,7 +272,7 @@ function buildCard(kw, result, kwHistory) {
     ? `<div class="pr-shop-badge">★ 自店PR出稿中</div>`
     : '';
 
-  // 表示順位ブロック
+  // 表示順位ブロック (トータル順位を表示)
   let rankHTML;
   if (isPR) {
     rankHTML = `
@@ -280,7 +280,7 @@ function buildCard(kw, result, kwHistory) {
         <div class="rank-oor-big" style="color:var(--pr-col)">PR出稿中</div>
         <div class="rank-oor-sub">純粋順位は圏外（${kwHistory.length * 45}位以内に未登場）</div>
       </div>`;
-  } else if (rank === null) {
+  } else if (totalRank === null) {
     rankHTML = `
       <div class="rank-row">
         <div class="rank-oor">
@@ -298,25 +298,15 @@ function buildCard(kw, result, kwHistory) {
       </div>`;
   }
 
-  // 純粋順位行（表示順位とPR件数が両方ある場合のみ意味を持つ）
+  // 純粋順位行
   let organicHTML = '';
-  if (!isPR && rank !== null && prCount !== null && prCount > 0) {
-    const diffFromTotal = rank - (organicRank || rank);
-    const cls = (organicRank || rank) <= 10 ? 'good' : 'norm';
+  if (!isPR && organicRank !== null) {
+    const cls = organicRank <= 10 ? 'good' : 'norm';
     organicHTML = `
       <div class="organic-row">
-        <span class="organic-label">純粋</span>
-        <span class="organic-val ${cls}">${organicRank || rank}位</span>
-        ${diffFromTotal > 0 ? `<span class="change" style="font-size:.65rem;color:var(--text-2)">（PR${prCount}件除く）</span>` : ''}
-      </div>`;
-  } else if (!isPR && rank !== null && prCount === null) {
-    // RPP広告は動的読み込みのため取得不可。
-    // __INITIAL_STATE__ の items 配列は純粋検索結果のみ含むため、この順位 = 純粋順位。
-    organicHTML = `
-      <div class="organic-row" title="RPP広告はページ描画後のJavaScript読み込みのため自動取得不可。この順位はPR広告を含まない純粋な検索順位です。">
         <span class="organic-label">純粋順位</span>
-        <span class="organic-val good">${rank}位</span>
-        <span style="font-size:.6rem;color:var(--text-2);margin-left:2px">= この順位</span>
+        <span class="organic-val ${cls}">${organicRank}位</span>
+        ${prCount !== null ? `<span class="change" style="font-size:.65rem;color:var(--text-2)">（PR${prCount}件込みでトータル${totalRank}位）</span>` : '<span style="font-size:.6rem;color:var(--text-2);margin-left:2px">= この順位</span>'}
       </div>`;
   }
 
