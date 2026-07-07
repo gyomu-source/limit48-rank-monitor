@@ -4,7 +4,7 @@ const path = require('path');
 
 const KEYWORDS = ['ファスティング', '酵素ドリンク'];
 const TARGET_ID = 'limit48'; // 楽天用
-const TARGET_BRAND = 'リムイット48'; // Amazon用
+const TARGET_BRAND = 'リムイット'; // Amazon用 (判定を少し甘くする)
 const HISTORY_FILE = path.join(__dirname, 'rank_history.json');
 
 async function checkRakuten(keyword) {
@@ -100,16 +100,17 @@ async function checkAmazon(keyword) {
     await page.evaluate(async () => {
       await new Promise((resolve) => {
         let totalHeight = 0;
-        let distance = 300;
+        let distance = 400;
         let timer = setInterval(() => {
           let scrollHeight = document.body.scrollHeight;
           window.scrollBy(0, distance);
           totalHeight += distance;
-          if(totalHeight >= 2000 || totalHeight >= scrollHeight){
+          // Amazonは下までスクロールしないと広告が出きらないことがあるため、少し深めに
+          if(totalHeight >= 3000 || totalHeight >= scrollHeight){
             clearInterval(timer);
             resolve();
           }
-        }, 150);
+        }, 200);
       });
     });
     
@@ -133,7 +134,8 @@ async function checkAmazon(keyword) {
           prCount++;
         } else {
           organicRank++;
-          if (title.includes(targetBrand)) {
+          // 大文字小文字や表記揺れを考慮
+          if (title.toLowerCase().includes(targetBrand.toLowerCase()) || title.includes('limit48') || title.includes('Limit48')) {
             if (!found) {
               targetRank = organicRank;
               targetTotalRank = organicRank + prCount;
