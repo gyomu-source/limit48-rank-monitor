@@ -143,12 +143,12 @@ footer{margin-top:40px;text-align:center;font-size:.6rem;color:var(--text-2);opa
 
   <div class="legend">
     <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>トータル順位（PR広告を含む）</div>
-    <div class="legend-item"><div class="legend-dot" style="background:var(--pr-col);opacity:.4"></div>PR件数: RPP広告は動的読み込みのため非対応（ブラウザで要確認）</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--pr-col)"></div>PR件数: RPP広告等を含めた広告商品の総数</div>
   </div>
 
   <div class="strip" style="margin-top:16px">
     <div class="dot"></div>
-    <div class="strip-txt"><strong>朝7時・夕18時</strong> GitHub Actionsが自動チェック。「今すぐチェック実行」ボタンで即時更新も可能。<br>※ PR広告を含んだ合計の順位を表示します。PR件数が取得できない場合は純粋順位を表示します。</div>
+    <div class="strip-txt"><strong>朝7時・夕18時</strong> GitHub Actionsが自動チェック。「今すぐチェック実行」ボタンで即時更新も可能。<br>※ ブラウザ操作により、RPP広告などのPR枠を含めた<strong>本当の順位</strong>を取得します。</div>
   </div>
 
   <footer>limit48 EC Management · 楽天ウェブサービス API · GitHub Actions</footer>
@@ -250,42 +250,29 @@ function changeHTML(change) {
 
 function buildCard(kw, result, kwHistory) {
   const organicRank = result.organicRank || null;
-  const totalRank = result.rank || organicRank; // PRが取れない場合は純粋順位を代用
-  const isPR = result.isPR === true;
+  const totalRank = result.rank || organicRank;
   const prCount = result.prCount != null ? result.prCount : null;
-  const prShopFound = result.prShopFound === true;
-  const oor = totalRank === null && !isPR;
+  const oor = totalRank === null;
 
   const change = getChange(kwHistory);
   const hasEnough = kwHistory.filter(h => h.r !== null).length >= 2;
 
   const card = document.createElement('div');
-  card.className = 'card' + (oor ? ' oor' : '') + (isPR ? ' is-pr' : '');
+  card.className = 'card' + (oor ? ' oor' : '');
 
   // PR件数バッジ
   const prBadgeHTML = prCount !== null
     ? `<div class="pr-badge"><div class="pr-count"><div class="pr-dot"></div>PR ${prCount}件</div></div>`
-    : `<div class="pr-badge"><div class="pr-count pr-count-na" title="RPP広告はJavaScript動的読み込みのためサーバー側では取得不可">PR —</div></div>`;
+    : `<div class="pr-badge"><div class="pr-count pr-count-na">PR —</div></div>`;
 
-  // 自店PR出稿バッジ
-  const prShopHTML = prShopFound
-    ? `<div class="pr-shop-badge">★ 自店PR出稿中</div>`
-    : '';
-
-  // 表示順位ブロック (トータル順位を表示)
+  // 表示順位ブロック
   let rankHTML;
-  if (isPR) {
-    rankHTML = `
-      <div class="rank-oor">
-        <div class="rank-oor-big" style="color:var(--pr-col)">PR出稿中</div>
-        <div class="rank-oor-sub">純粋順位は圏外（${kwHistory.length * 45}位以内に未登場）</div>
-      </div>`;
-  } else if (totalRank === null) {
+  if (totalRank === null) {
     rankHTML = `
       <div class="rank-row">
         <div class="rank-oor">
           <div class="rank-oor-big">圏外</div>
-          <div class="rank-oor-sub">225位以内に未登場</div>
+          <div class="rank-oor-sub">100位以内に未登場</div>
         </div>
         ${prBadgeHTML}
       </div>`;
@@ -300,7 +287,7 @@ function buildCard(kw, result, kwHistory) {
 
   // 純粋順位行
   let organicHTML = '';
-  if (!isPR && organicRank !== null) {
+  if (organicRank !== null) {
     const cls = organicRank <= 10 ? 'good' : 'norm';
     organicHTML = `
       <div class="organic-row">
@@ -317,7 +304,6 @@ function buildCard(kw, result, kwHistory) {
   card.innerHTML = `
     <div class="card-kw">${kw}</div>
     ${rankHTML}
-    ${prShopHTML}
     ${organicHTML}
     ${changeHTML(change)}
     ${sparkHTML}
@@ -343,33 +329,18 @@ function drawSpark(svgEl, history) {
   const W = 200, H = 36, PAD = 4;
   const ranks = pts.map(p => p.r);
   const lo = Math.min(...ranks), hi = Math.max(...ranks);
-  const rng = hi - lo || 10;
+  const spread = hi - lo || 1;
 
-  const toX = i => PAD + (i / (pts.length - 1)) * (W - PAD * 2);
-  const toY = r => PAD + ((r - lo) / rng) * (H - PAD * 2);
-
-  let line = '', area = '';
-  pts.forEach((p, i) => {
-    const x = toX(i), y = toY(p.r);
-    if (i === 0) { line = `M ${x} ${y}`; area = `M ${x} ${H} L ${x} ${y}`; }
-    else { line += ` L ${x} ${y}`; area += ` L ${x} ${y}`; }
+  let path = `M ${PAD} ${H - PAD - ((ranks[0] - lo) / spread) * (H - PAD * 2)}`;
+  ranks.forEach((r, i) => {
+    const x = PAD + (i / (ranks.length - 1)) * (W - PAD * 2);
+    const y = H - PAD - ((r - lo) / spread) * (H - PAD * 2);
+    path += ` L ${x} ${y}`;
   });
-  area += ` L ${toX(pts.length-1)} ${H} Z`;
 
-  const uid = Math.random().toString(36).slice(2,7);
   svgEl.innerHTML = `
-    <defs>
-      <linearGradient id="g${uid}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="#4A90D9" stop-opacity=".3"/>
-        <stop offset="100%" stop-color="#4A90D9" stop-opacity="0"/>
-      </linearGradient>
-    </defs>
-    <path d="${area}" fill="url(#g${uid})"/>
-    <path d="${line}" fill="none" stroke="#4A90D9" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-    ${pts.map((p,i) => {
-      const x=toX(i), y=toY(p.r), last=i===pts.length-1;
-      return `<circle cx="${x}" cy="${y}" r="${last?3:2}" fill="${last?'#4A90D9':'rgba(74,144,217,.5)'}"/>`;
-    }).join('')}
+    <path d="${path}" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="${PAD + (W - PAD * 2)}" cy="${H - PAD - ((ranks[ranks.length - 1] - lo) / spread) * (H - PAD * 2)}" r="2.5" fill="var(--accent)" />
   `;
 }
 
