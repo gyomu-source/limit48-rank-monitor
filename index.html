@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>楽天/Amazon 順位モニター — limit48</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
 :root {
   --bg: #0A1628;
@@ -21,9 +22,10 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--bg);min-height:100vh}
-body{color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{color:var(--text);font-family:-apple-system,BlinkMacSystemFont,
+'Segoe UI',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 
-#app{max-width:900px;margin:0 auto;padding:36px 20px 72px}
+#app{max-width:1200px;margin:0 auto;padding:36px 20px 72px}
 
 /* Header */
 .hd{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap}
@@ -47,7 +49,8 @@ body{color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',s
 @media(max-width:600px){.grid{grid-template-columns:1fr}}
 
 .card{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:24px 20px 18px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;transition:border-color .2s}
-.card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)}
+.card::after{content:
+'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)}
 .card.oor::after{background:var(--warn)}
 
 .card-kw{font-size:.63rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-2)}
@@ -94,6 +97,19 @@ body{color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',s
 .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
+/* Chart Section */
+.chart-section-wrapper{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:24px}
+@media(max-width:900px){.chart-section-wrapper{grid-template-columns:1fr}}
+
+.chart-section{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:24px 20px;position:relative;overflow:hidden}
+.chart-section::after{content:
+'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)}
+.chart-title{font-size:.85rem;font-weight:700;color:var(--text);margin-bottom:16px;letter-spacing:-.025em}
+.chart-container{position:relative;height:300px;margin-bottom:16px}
+.chart-legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.72rem;color:var(--text-2)}
+.chart-legend-item{display:flex;align-items:center;gap:6px}
+.chart-legend-dot{width:8px;height:8px;border-radius:2px}
+
 footer{margin-top:40px;text-align:center;font-size:.6rem;color:var(--text-2);opacity:.5}
 </style>
 </head>
@@ -110,8 +126,10 @@ footer{margin-top:40px;text-align:center;font-size:.6rem;color:var(--text-2);opa
   </header>
 
   <div class="tabs">
-    <div class="tab tab-rakuten active" onclick="switchTab('rakuten')"><div class="tab-icon">R</div>楽天市場</div>
-    <div class="tab tab-amazon" onclick="switchTab('amazon')"><div class="tab-icon">A</div>Amazon.co.jp</div>
+    <div class="tab tab-rakuten active" onclick="switchTab(
+'rakuten')"><div class="tab-icon">R</div>楽天市場</div>
+    <div class="tab tab-amazon" onclick="switchTab(
+'amazon')"><div class="tab-icon">A</div>Amazon.co.jp</div>
   </div>
 
   <div id="error-area"></div>
@@ -125,6 +143,9 @@ footer{margin-top:40px;text-align:center;font-size:.6rem;color:var(--text-2);opa
 
   <div id="main-content"><div class="loading">データを読み込み中...</div></div>
 
+  <!-- Chart Section -->
+  <div id="chart-section-wrapper" class="chart-section-wrapper"></div>
+
   <div class="strip" style="margin-top:24px">
     <div class="dot"></div>
     <div class="strip-txt"><strong>朝7時・夕18時</strong> 自動チェック実行。PR/スポンサー広告を含めた「トータル順位」を監視します。</div>
@@ -134,47 +155,57 @@ footer{margin-top:40px;text-align:center;font-size:.6rem;color:var(--text-2);opa
 </div>
 
 <script>
-const KEYWORDS = ['ファスティング', '酵素ドリンク'];
-let currentPlatform = 'rakuten';
+const KEYWORDS = ["ファスティング", "酵素ドリンク"];
+let currentPlatform = "rakuten";
 let fullHistory = [];
+let chartData = null;
+let charts = {}; // Store chart instances
 
 async function loadData() {
-  const btn = document.getElementById('btn-refresh');
-  const icon = document.getElementById('refresh-icon');
+  const btn = document.getElementById("btn-refresh");
+  const icon = document.getElementById("refresh-icon");
   btn.disabled = true;
-  icon.innerHTML = '<span class="spin"></span>';
+  icon.innerHTML = 
+'<span class="spin"></span>';
 
   try {
     const res = await fetch(`rank_history.json?v=${Date.now()}`);
     fullHistory = await res.json();
+    
+    // Load chart data
+    const chartRes = await fetch(`chart_data.json?v=${Date.now()}`);
+    chartData = await chartRes.json();
+    
     renderDashboard();
   } catch(e) {
-    document.getElementById('error-area').innerHTML = `<div class="error-box">データ取得エラー: ${e.message}</div>`;
+    document.getElementById("error-area").innerHTML = `<div class="error-box">データ取得エラー: ${e.message}</div>`;
   } finally {
     btn.disabled = false;
-    icon.textContent = '↻';
+    icon.textContent = 
+'↻';
   }
 }
 
 function switchTab(platform) {
   currentPlatform = platform;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelector(`.tab-${platform}`).classList.add('active');
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelector(`.tab-${platform}`).classList.add("active");
   renderDashboard();
 }
 
 function renderDashboard() {
   if (!fullHistory.length) return;
   const latest = fullHistory[fullHistory.length - 1];
-  document.getElementById('last-check').textContent = `${latest.dateStr} ${latest.timeStr} JST`;
+  document.getElementById("last-check").textContent = `${latest.dateStr} ${latest.timeStr} JST`;
 
-  const grid = document.createElement('div');
-  grid.className = 'grid';
+  const grid = document.createElement("div");
+  grid.className = "grid";
 
   KEYWORDS.forEach(kw => {
     const getResult = (h) => {
       if (h.results[currentPlatform]) return h.results[currentPlatform][kw];
-      return currentPlatform === 'rakuten' ? h.results[kw] : null;
+      return currentPlatform === 
+'rakuten' ? h.results[kw] : null;
     };
 
     const currentResult = getResult(latest) || {};
@@ -185,14 +216,21 @@ function renderDashboard() {
     grid.appendChild(buildCard(kw, currentResult, kwHistory));
   });
 
-  document.getElementById('main-content').innerHTML = '';
-  document.getElementById('main-content').appendChild(grid);
+  document.getElementById("main-content").innerHTML = 
+'';
+  document.getElementById("main-content").appendChild(grid);
+
+  // Render charts
+  if (chartData) {
+    renderCharts();
+  }
 
   requestAnimationFrame(() => {
     KEYWORDS.forEach(kw => {
       const getResult = (h) => {
         if (h.results[currentPlatform]) return h.results[currentPlatform][kw];
-        return currentPlatform === 'rakuten' ? h.results[kw] : null;
+        return currentPlatform === 
+'rakuten' ? h.results[kw] : null;
       };
       const r = getResult(latest)?.rank;
       if (r) animateNum(document.getElementById(`rn-${kw}`), r, 600);
@@ -210,8 +248,11 @@ function buildCard(kw, result, kwHistory) {
   const pr = result.prCount != null ? result.prCount : null;
   const oor = rank === null;
 
-  const card = document.createElement('div');
-  card.className = 'card' + (oor ? ' oor' : '');
+  const card = document.createElement("div");
+  card.className = 
+'card' + (oor ? 
+' oor' : 
+'');
   
   const change = (() => {
     const valid = kwHistory.filter(h => h.r !== null);
@@ -219,25 +260,261 @@ function buildCard(kw, result, kwHistory) {
     const diff = valid[valid.length - 2].r - valid[valid.length - 1].r;
     if (diff > 0) return `<span class="change up">▲ ${diff}位 上昇</span>`;
     if (diff < 0) return `<span class="change dn">▼ ${Math.abs(diff)}位 下降</span>`;
-    return '<span class="change">変動なし</span>';
+    return 
+'<span class="change">変動なし</span>';
   })();
 
-    const prLabel = currentPlatform === 'amazon' ? 'スポンサー' : 'PR';
+    const prLabel = currentPlatform === 
+'amazon' ? 
+'スポンサー' : 
+'PR';
     card.innerHTML = `
     <div class="card-kw">${kw}</div>
     <div class="rank-row">
-      ${oor ? '<div class="rank-oor"><div class="rank-oor-big">圏外</div><div class="rank-oor-sub">100位以内に未登場</div></div>' : 
+      ${oor ? 
+'<div class="rank-oor"><div class="rank-oor-big">圏外</div><div class="rank-oor-sub">100位以内に未登場</div></div>' : 
       `<div class="rank-num" id="rn-${kw}">—</div><div class="rank-unit">位</div>`}
-      <div class="pr-badge"><div class="pr-count"><div class="pr-dot"></div>${prLabel} ${pr !== null ? pr : '—'}件</div></div>
+      <div class="pr-badge"><div class="pr-count"><div class="pr-dot"></div>${prLabel} ${pr !== null ? pr : 
+'—'}件</div></div>
     </div>
     <div class="organic-row">
       <span class="organic-label">純粋順位</span>
-      <span class="organic-val ${organic <= 10 ? 'good' : 'norm'}">${organic || '—'}位</span>
+      <span class="organic-val ${organic <= 10 ? 
+'good' : 
+'norm'}">${organic || 
+'—'}位</span>
     </div>
-    ${change || ''}
+    ${change || 
+''}
     <div class="sparkwrap"><svg id="sv-${kw}" viewBox="0 0 200 36" preserveAspectRatio="none"></svg></div>
   `;
   return card;
+}
+
+function renderCharts() {
+  if (!chartData) return;
+  
+  const chartSectionWrapper = document.getElementById("chart-section-wrapper");
+  chartSectionWrapper.innerHTML = 
+''; // Clear existing charts
+
+  KEYWORDS.forEach(keyword => {
+    const platformData = chartData[currentPlatform];
+    if (!platformData) return;
+    
+    const kwData = platformData[keyword];
+    if (!kwData) return;
+
+    const chartId = `rankChart-${currentPlatform}-${keyword}`;
+    const chartHtml = `
+      <div class="chart-section">
+        <div class="chart-title">${keyword} ランキングトレンド</div>
+        <div class="chart-container">
+          <canvas id="${chartId}"></canvas>
+        </div>
+        <div class="chart-legend">
+          <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#4A90D9"></div>総合順位</div>
+          <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#3ABF8A"></div>純粋順位</div>
+          <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#9B6DFF"></div>広告件数</div>
+        </div>
+      </div>
+    `;
+    chartSectionWrapper.insertAdjacentHTML("beforeend", chartHtml);
+
+    // Prepare chart data - use last 30 points
+    const lastN = 30;
+    const labels = chartData.labels.slice(-lastN);
+    const totalRank = kwData.totalRank.slice(-lastN);
+    const organicRank = kwData.organicRank.slice(-lastN);
+    const prCount = kwData.prCount.slice(-lastN);
+    
+    const ctx = document.getElementById(chartId).getContext("2d");
+    
+    // Destroy existing chart if it exists
+    if (charts[chartId]) {
+      charts[chartId].destroy();
+    }
+    
+    charts[chartId] = new Chart(ctx, {
+      type: 
+'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 
+'総合順位',
+            data: totalRank.map(r => r === 101 ? null : r),
+            borderColor: 
+'#4A90D9',
+            backgroundColor: 
+'rgba(74, 144, 217, 0.05)',
+            tension: 0.4,
+            fill: false,
+            pointRadius: 3,
+            pointBackgroundColor: 
+'#4A90D9',
+            pointBorderColor: 
+'#fff',
+            pointBorderWidth: 1,
+            yAxisID: 
+'y'
+          },
+          {
+            label: 
+'純粋順位',
+            data: organicRank.map(r => r === 101 ? null : r),
+            borderColor: 
+'#3ABF8A',
+            backgroundColor: 
+'rgba(58, 191, 138, 0.05)',
+            tension: 0.4,
+            fill: false,
+            pointRadius: 3,
+            pointBackgroundColor: 
+'#3ABF8A',
+            pointBorderColor: 
+'#fff',
+            pointBorderWidth: 1,
+            yAxisID: 
+'y'
+          },
+          {
+            label: 
+'広告件数',
+            data: prCount,
+            borderColor: 
+'#9B6DFF',
+            backgroundColor: 
+'rgba(155, 109, 255, 0.05)',
+            tension: 0.4,
+            fill: false,
+            pointRadius: 3,
+            pointBackgroundColor: 
+'#9B6DFF',
+            pointBorderColor: 
+'#fff',
+            pointBorderWidth: 1,
+            yAxisID: 
+'y1'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 
+'index',
+          intersect: false
+        },
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            backgroundColor: 
+'rgba(10, 22, 40, 0.9)',
+            titleColor: 
+'#D6E4F7',
+            bodyColor: 
+'#D6E4F7',
+            borderColor: 
+'rgba(74, 144, 217, 0.3)',
+            borderWidth: 1,
+            padding: 8,
+            titleFont: { size: 12, weight: 
+'bold' },
+            bodyFont: { size: 11 },
+            displayColors: true,
+            callbacks: {
+              label: function(context) {
+                let label = context.dataset.label || 
+'';
+                if (label) {
+                  label += 
+': ';
+                }
+                if (context.parsed.y !== null) {
+                  label += context.parsed.y + (context.dataset.yAxisID === 
+'y1' ? 
+'件' : 
+'位');
+                }
+                return label;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: {
+              color: 
+'rgba(74, 144, 217, 0.08)',
+              drawBorder: false
+            },
+            ticks: {
+              color: 
+'rgba(107, 139, 176, 0.7)',
+              font: { size: 10 }
+            }
+          },
+          y: {
+            type: 
+'linear',
+            display: true,
+            position: 
+'left',
+            grid: {
+              color: 
+'rgba(74, 144, 217, 0.08)',
+              drawBorder: false
+            },
+            ticks: {
+              color: 
+'rgba(107, 139, 176, 0.7)',
+              font: { size: 10 },
+              reverse: true // Lower rank numbers at top
+            },
+            title: {
+              display: true,
+              text: 
+'ランキング（位）',
+              color: 
+'rgba(107, 139, 176, 0.7)',
+              font: { size: 11, weight: 
+'bold' }
+            }
+          },
+          y1: {
+            type: 
+'linear',
+            display: true,
+            position: 
+'right',
+            grid: {
+              drawOnChartArea: false,
+              drawBorder: false
+            },
+            ticks: {
+              color: 
+'rgba(107, 139, 176, 0.7)',
+              font: { size: 10 }
+            },
+            title: {
+              display: true,
+              text: 
+'広告件数',
+              color: 
+'rgba(107, 139, 176, 0.7)',
+              font: { size: 11, weight: 
+'bold' }
+            }
+          }
+        }
+      }
+    });
+  });
 }
 
 function animateNum(el, target, ms) {
