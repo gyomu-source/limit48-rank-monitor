@@ -60,7 +60,7 @@ body{color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',s
 .rank-oor-sub{font-size:.66rem;color:var(--text-2)}
 
 .pr-badge{display:inline-flex;flex-direction:column;align-items:flex-start;gap:2px;margin-left:2px;padding-bottom:6px;align-self:flex-end}
-.pr-count{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:rgba(155,109,255,0.15);border:1px solid rgba(155,109,255,0.35);border-radius:3px;font-size:.62rem;font-weight:700;color:var(--pr-col);letter-spacing:.04em;white-space:nowrap}
+.pr-count{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;background:rgba(155,109,255,0.15);border:1px solid rgba(155,109,255,0.35);border-radius:3px;font-size:.62rem;font-weight:700;color:var(--pr-col);letter-spacing:0;white-space:nowrap}
 .pr-dot{width:5px;height:5px;border-radius:50%;background:var(--pr-col)}
 
 .organic-row{display:flex;align-items:center;gap:6px;font-size:.72rem}
@@ -127,7 +127,7 @@ footer{margin-top:40px;text-align:center;font-size:.6rem;color:var(--text-2);opa
 
   <div class="strip" style="margin-top:24px">
     <div class="dot"></div>
-    <div class="strip-txt"><strong>朝7時・夕18時</strong> 自動チェック実行。PR広告を含めた「トータル順位」を監視します。</div>
+    <div class="strip-txt"><strong>朝7時・夕18時</strong> 自動チェック実行。PR/スポンサー広告を含めた「トータル順位」を監視します。</div>
   </div>
 
   <footer>limit48 EC Management · Rakuten & Amazon Scraper</footer>
@@ -222,12 +222,13 @@ function buildCard(kw, result, kwHistory) {
     return '<span class="change">変動なし</span>';
   })();
 
-  card.innerHTML = `
+    const prLabel = currentPlatform === 'amazon' ? 'スポンサー' : 'PR';
+    card.innerHTML = `
     <div class="card-kw">${kw}</div>
     <div class="rank-row">
       ${oor ? '<div class="rank-oor"><div class="rank-oor-big">圏外</div><div class="rank-oor-sub">100位以内に未登場</div></div>' : 
       `<div class="rank-num" id="rn-${kw}">—</div><div class="rank-unit">位</div>`}
-      <div class="pr-badge"><div class="pr-count"><div class="pr-dot"></div>PR ${pr !== null ? pr : '—'}件</div></div>
+      <div class="pr-badge"><div class="pr-count"><div class="pr-dot"></div>${prLabel} ${pr !== null ? pr : '—'}件</div></div>
     </div>
     <div class="organic-row">
       <span class="organic-label">純粋順位</span>
