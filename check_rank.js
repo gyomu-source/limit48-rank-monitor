@@ -91,16 +91,16 @@ async function checkAmazon(keyword) {
     
     // スクロール
     await page.evaluate(async () => {
-      for (let i = 0; i < 15; i++) {
+      for (let i = 0; i < 20; i++) {
         window.scrollBy(0, 400);
         await new Promise(r => setTimeout(r, 400));
       }
     });
     
-    await new Promise(r => setTimeout(r, 3000));
+    await new Promise(r => setTimeout(r, 5000));
 
     const results = await page.evaluate(() => {
-      // 検索結果アイテムの取得 (より広いセレクタ)
+      // 検索結果アイテムの取得
       const items = Array.from(document.querySelectorAll('.s-result-item[data-asin]'));
       
       let prCount = 0;
@@ -111,7 +111,7 @@ async function checkAmazon(keyword) {
       const debugTitles = [];
 
       for (const item of items) {
-        // Amazonのスポンサーラベル判定 (究極版)
+        // Amazonのスポンサーラベル判定 (さらに強化)
         const sponsoredSelectors = [
           '.puis-sponsored-label-text',
           '.s-label-popover-default',
@@ -119,36 +119,32 @@ async function checkAmazon(keyword) {
           '.s-label-popover',
           '.puis-label-popover-default',
           '.s-sponsored-grid-header',
-          '[data-component-type="sp-ad-result"]'
+          '[data-component-type="sp-ad-result"]',
+          '.s-sponsored-label-text'
         ];
         
         let isSponsored = sponsoredSelectors.some(s => item.querySelector(s) !== null) || 
                           item.classList.contains('AdHolder') ||
-                          item.getAttribute('data-component-type') === 'sp-ad-result';
+                          item.getAttribute('data-component-type') === 'sp-ad-result' ||
+                          item.innerHTML.includes('sponsored') ||
+                          item.innerHTML.includes('ad-result');
         
-        // テキスト・属性・aria-labelなどあらゆる場所から「スポンサー」を探す
-        // Amazonはボット対策で文字をバラバラにしたり隠したりすることがあるため、全テキストをチェック
-        const itemHtml = item.innerHTML || "";
         const itemText = item.innerText || "";
-        
         if (!isSponsored) {
-          if (itemText.includes('スポンサー') || itemText.includes('Sponsored') || 
-              itemHtml.includes('スポンサー') || itemHtml.includes('Sponsored') ||
-              itemHtml.includes('sponsored') || itemHtml.includes('ad-result')) {
+          if (itemText.includes('スポンサー') || itemText.includes('Sponsored')) {
             isSponsored = true;
           }
         }
         
         const titleEl = item.querySelector('h2');
         const title = titleEl ? titleEl.textContent.trim() : "";
-        if (!title) continue; // タイトルがないものは無視
+        if (!title) continue;
 
         if (isSponsored) {
           prCount++;
         } else {
           organicRank++;
           const lowerTitle = title.toLowerCase();
-          // 判定条件を正規表現で柔軟に
           const isTarget = /limit|リムイット|the\s*limit/i.test(lowerTitle);
           
           if (isTarget && !found) {
@@ -158,14 +154,68 @@ async function checkAmazon(keyword) {
           }
         }
         debugTitles.push(`${isSponsored ? '[SP]' : '[' + organicRank + ']'} ${title.substring(0, 30)}...`);
-        if (organicRank >= 100) break;
       }
       return { rank: targetTotalRank, organicRank: targetRank, prCount: prCount, debugTitles: debugTitles };
     });
 
-    console.log(`    [Amazon Debug] 取得アイテム数: ${results.debugTitles.length}, スポンサー数: ${results.prCount}`);
-    results.debugTitles.slice(0, 10).forEach(t => console.log(`      ${t}`));
+    // 1ページ目で見つからなかった場合、2ページ目も探す
+    if (!results.rank) {
+      console.log(`    [Amazon] 1ページ目に不在のため2ページ目をチェック中...`);
+      const nextButton = await page.$('.s-pagination-next');
+      if (nextButton) {
+        await Promise.all([
+          page.click('.s-pagination-next'),
+          page.waitForNavigation({ waitUntil: 'networkidle2' })
+        ]);
+        
+        await page.evaluate(async () => {
+          for (let i = 0; i < 10; i++) {
+            window.scrollBy(0, 400);
+            await new Promise(r => setTimeout(r, 400));
+          }
+        });
 
+        const results2 = await page.evaluate((currentPrCount, currentOrganicRank) => {
+          const items = Array.from(document.querySelectorAll('.s-result-item[data-asin]'));
+          let prCount = currentPrCount;
+          let organicRank = currentOrganicRank;
+          let targetRank = null;
+          let targetTotalRank = null;
+          let found = false;
+
+          for (const item of items) {
+            const sponsoredSelectors = ['.puis-sponsored-label-text', '.s-label-popover-default', '.s-sponsored-label-info-icon', '.s-label-popover', '.puis-label-popover-default', '.s-sponsored-grid-header', '[data-component-type="sp-ad-result"]'];
+            let isSponsored = sponsoredSelectors.some(s => item.querySelector(s) !== null) || item.classList.contains('AdHolder');
+            if (!isSponsored && (item.innerText.includes('スポンサー') || item.innerText.includes('Sponsored'))) isSponsored = true;
+
+            const titleEl = item.querySelector('h2');
+            const title = titleEl ? titleEl.textContent.trim() : "";
+            if (!title) continue;
+
+            if (isSponsored) {
+              prCount++;
+            } else {
+              organicRank++;
+              const isTarget = /limit|リムイット|the\s*limit/i.test(title.toLowerCase());
+              if (isTarget && !found) {
+                targetRank = organicRank;
+                targetTotalRank = organicRank + prCount;
+                found = true;
+              }
+            }
+          }
+          return { rank: targetTotalRank, organicRank: targetRank, prCount: prCount };
+        }, results.prCount, results.organicRank);
+
+        if (results2.rank) {
+          results.rank = results2.rank;
+          results.organicRank = results2.organicRank;
+          results.prCount = results2.prCount;
+        }
+      }
+    }
+
+    console.log(`    [Amazon Debug] 最終結果: トータル${results.rank || '圏外'}位, スポンサー数: ${results.prCount}`);
     return { rank: results.rank, organicRank: results.organicRank, prCount: results.prCount };
   } catch (error) {
     console.error(`Amazon Error (${keyword}):`, error.message);
