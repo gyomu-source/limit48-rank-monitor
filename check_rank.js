@@ -112,22 +112,8 @@ async function checkAmazon(keyword) {
 
 
 
-    // 2. お届け先設定
-    try {
-      const locationPopoverLink = await page.$("#nav-global-location-popover-link");
-      if (locationPopoverLink) {
-        await locationPopoverLink.click();
-      } else {
-        console.log("    [Amazon] お届け先設定のポップアップリンクが見つかりませんでした。スキップします。");
-      }
-      await page.waitForSelector("#GLUXZipUpdateInput", { visible: true, timeout: 5000 });
-      await page.type("#GLUXZipUpdateInput", "150-0043"); // 渋谷の郵便番号
-      await page.click("#GLUXZipUpdate-announce");
-      await page.waitForNavigation({ waitUntil: "networkidle2", timeout: 10000 });
-      console.log("    [Amazon] お届け先を渋谷に設定しました。");
-    } catch (e) {
-      console.log("    [Amazon] お届け先設定のポップアップが表示されないか、設定に失敗しました:", e.message);
-    }
+    // 2. お届け先設定 (GitHub Actions 環境での安定性のため、一時的に無効化)
+    console.log("    [Amazon] お届け先設定は一時的に無効化されています。");
     await new Promise(r => setTimeout(r, 2000));
 
     // 3. 検索 (常にURLを直接開く)
