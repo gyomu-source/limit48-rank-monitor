@@ -77,31 +77,31 @@ async function checkAmazon(keyword) {
     args: [
       '--no-sandbox', 
       '--disable-setuid-sandbox',
-      '--lang=ja-JP,ja' // 言語設定を日本語に固定
+      '--lang=ja-JP,ja'
     ]
   });
   const page = await browser.newPage();
   await page.setViewport({ width: 1280, height: 4000 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-  // 言語設定をヘッダーでも送信
   await page.setExtraHTTPHeaders({ 'Accept-Language': 'ja-JP,ja;q=0.9' });
 
   try {
     const url = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
     
-    // スクロールをさらに丁寧に
+    // スクロール
     await page.evaluate(async () => {
-      for (let i = 0; i < 20; i++) {
-        window.scrollBy(0, 300);
+      for (let i = 0; i < 15; i++) {
+        window.scrollBy(0, 400);
         await new Promise(r => setTimeout(r, 400));
       }
     });
     
-    await new Promise(r => setTimeout(r, 5000));
+    await new Promise(r => setTimeout(r, 3000));
 
-    const results = await page.evaluate((targetBrand) => {
-      const items = Array.from(document.querySelectorAll('[data-component-type="s-search-result"]'));
+    const results = await page.evaluate(() => {
+      // 検索結果アイテムの取得 (より広いセレクタ)
+      const items = Array.from(document.querySelectorAll('.s-result-item[data-asin]'));
       
       let prCount = 0;
       let organicRank = 0;
@@ -117,37 +117,39 @@ async function checkAmazon(keyword) {
           '.s-label-popover-default',
           '.s-sponsored-label-info-icon',
           '.s-label-popover',
-          '[data-component-type="sp-ad-result"]',
+          '.puis-label-popover-default',
           '.s-sponsored-grid-header',
-          '.puis-label-popover-default'
+          '[data-component-type="sp-ad-result"]'
         ];
         
-        let isSponsored = sponsoredSelectors.some(s => item.querySelector(s) !== null);
+        let isSponsored = sponsoredSelectors.some(s => item.querySelector(s) !== null) || 
+                          item.classList.contains('AdHolder') ||
+                          item.getAttribute('data-component-type') === 'sp-ad-result';
         
         // テキスト・属性・aria-labelなどあらゆる場所から「スポンサー」を探す
+        // Amazonはボット対策で文字をバラバラにしたり隠したりすることがあるため、全テキストをチェック
         const itemHtml = item.innerHTML || "";
         const itemText = item.innerText || "";
-        const ariaLabel = item.getAttribute('aria-label') || "";
         
         if (!isSponsored) {
           if (itemText.includes('スポンサー') || itemText.includes('Sponsored') || 
               itemHtml.includes('スポンサー') || itemHtml.includes('Sponsored') ||
-              ariaLabel.includes('スポンサー') || ariaLabel.includes('Sponsored') ||
               itemHtml.includes('sponsored') || itemHtml.includes('ad-result')) {
             isSponsored = true;
           }
         }
         
-        const title = item.querySelector('h2')?.textContent.trim() || "";
+        const titleEl = item.querySelector('h2');
+        const title = titleEl ? titleEl.textContent.trim() : "";
+        if (!title) continue; // タイトルがないものは無視
 
         if (isSponsored) {
           prCount++;
         } else {
           organicRank++;
           const lowerTitle = title.toLowerCase();
-          const isTarget = lowerTitle.includes('limit') || 
-                           lowerTitle.includes('リムイット') || 
-                           lowerTitle.includes('the limit');
+          // 判定条件を正規表現で柔軟に
+          const isTarget = /limit|リムイット|the\s*limit/i.test(lowerTitle);
           
           if (isTarget && !found) {
             targetRank = organicRank;
@@ -155,14 +157,14 @@ async function checkAmazon(keyword) {
             found = true;
           }
         }
-        debugTitles.push(`${isSponsored ? '[SP]' : '[' + organicRank + ']'} ${title}`);
+        debugTitles.push(`${isSponsored ? '[SP]' : '[' + organicRank + ']'} ${title.substring(0, 30)}...`);
         if (organicRank >= 100) break;
       }
       return { rank: targetTotalRank, organicRank: targetRank, prCount: prCount, debugTitles: debugTitles };
-    }, TARGET_BRAND);
+    });
 
     console.log(`    [Amazon Debug] 取得アイテム数: ${results.debugTitles.length}, スポンサー数: ${results.prCount}`);
-    results.debugTitles.slice(0, 15).forEach(t => console.log(`      ${t}`));
+    results.debugTitles.slice(0, 10).forEach(t => console.log(`      ${t}`));
 
     return { rank: results.rank, organicRank: results.organicRank, prCount: results.prCount };
   } catch (error) {
