@@ -74,20 +74,27 @@ async function checkRakuten(keyword) {
 async function checkAmazon(keyword) {
   const browser = await puppeteer.launch({
     headless: "new",
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: [
+      '--no-sandbox', 
+      '--disable-setuid-sandbox',
+      '--lang=ja-JP,ja' // 言語設定を日本語に固定
+    ]
   });
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 3000 });
+  await page.setViewport({ width: 1280, height: 4000 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+  // 言語設定をヘッダーでも送信
+  await page.setExtraHTTPHeaders({ 'Accept-Language': 'ja-JP,ja;q=0.9' });
 
   try {
     const url = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
     
+    // スクロールをさらに丁寧に
     await page.evaluate(async () => {
-      for (let i = 0; i < 15; i++) {
-        window.scrollBy(0, 400);
-        await new Promise(r => setTimeout(r, 500));
+      for (let i = 0; i < 20; i++) {
+        window.scrollBy(0, 300);
+        await new Promise(r => setTimeout(r, 400));
       }
     });
     
@@ -96,14 +103,7 @@ async function checkAmazon(keyword) {
     const results = await page.evaluate((targetBrand) => {
       const items = Array.from(document.querySelectorAll('[data-component-type="s-search-result"]'));
       
-      // スポンサー枠のカウント (より直接的なセレクタ)
-      const sponsoredItems = items.filter(item => {
-        return item.querySelector('.puis-sponsored-label-text, .s-label-popover-default, .s-sponsored-label-info-icon, .s-label-popover, [data-component-type="sp-ad-result"]') !== null ||
-               item.innerText.includes('スポンサー') ||
-               item.innerText.includes('Sponsored');
-      });
-
-      let prCount = sponsoredItems.length;
+      let prCount = 0;
       let organicRank = 0;
       let targetRank = null;
       let targetTotalRank = null;
@@ -111,10 +111,38 @@ async function checkAmazon(keyword) {
       const debugTitles = [];
 
       for (const item of items) {
-        const title = item.querySelector('h2')?.textContent.trim() || "";
-        const isSponsored = sponsoredItems.includes(item);
+        // Amazonのスポンサーラベル判定 (究極版)
+        const sponsoredSelectors = [
+          '.puis-sponsored-label-text',
+          '.s-label-popover-default',
+          '.s-sponsored-label-info-icon',
+          '.s-label-popover',
+          '[data-component-type="sp-ad-result"]',
+          '.s-sponsored-grid-header',
+          '.puis-label-popover-default'
+        ];
+        
+        let isSponsored = sponsoredSelectors.some(s => item.querySelector(s) !== null);
+        
+        // テキスト・属性・aria-labelなどあらゆる場所から「スポンサー」を探す
+        const itemHtml = item.innerHTML || "";
+        const itemText = item.innerText || "";
+        const ariaLabel = item.getAttribute('aria-label') || "";
         
         if (!isSponsored) {
+          if (itemText.includes('スポンサー') || itemText.includes('Sponsored') || 
+              itemHtml.includes('スポンサー') || itemHtml.includes('Sponsored') ||
+              ariaLabel.includes('スポンサー') || ariaLabel.includes('Sponsored') ||
+              itemHtml.includes('sponsored') || itemHtml.includes('ad-result')) {
+            isSponsored = true;
+          }
+        }
+        
+        const title = item.querySelector('h2')?.textContent.trim() || "";
+
+        if (isSponsored) {
+          prCount++;
+        } else {
           organicRank++;
           const lowerTitle = title.toLowerCase();
           const isTarget = lowerTitle.includes('limit') || 
@@ -133,9 +161,8 @@ async function checkAmazon(keyword) {
       return { rank: targetTotalRank, organicRank: targetRank, prCount: prCount, debugTitles: debugTitles };
     }, TARGET_BRAND);
 
-    console.log(`    [Amazon Debug] 取得タイトル数: ${results.debugTitles.length}`);
-    // 最初の20件をログ出力
-    results.debugTitles.slice(0, 20).forEach(t => console.log(`      ${t}`));
+    console.log(`    [Amazon Debug] 取得アイテム数: ${results.debugTitles.length}, スポンサー数: ${results.prCount}`);
+    results.debugTitles.slice(0, 15).forEach(t => console.log(`      ${t}`));
 
     return { rank: results.rank, organicRank: results.organicRank, prCount: results.prCount };
   } catch (error) {
