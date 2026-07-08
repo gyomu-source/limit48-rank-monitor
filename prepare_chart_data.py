@@ -57,7 +57,7 @@ def prepare_chart_data(history_file):
     return chart_data
 
 if __name__ == '__main__':
-    history_file = '/home/ubuntu/limit48-rank-monitor/rank_history.json'
+    history_file = 'rank_history.json'
     data = prepare_chart_data(history_file)
     with open('/home/ubuntu/limit48-rank-monitor/chart_data.json', 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
