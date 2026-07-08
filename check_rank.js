@@ -114,19 +114,10 @@ async function checkAmazon(keyword) {
     console.log('    [Amazon] お届け先設定の処理を一時的にスキップします。');
     await new Promise(r => setTimeout(r, 2000));
 
-    // 3. 検索 (検索窓に入力する動作をシミュレート、失敗時はURL直接遷移)
-    try {
-        await page.waitForSelector("#twotabsearchtextbox", { visible: true, timeout: 10000 });
-        await page.type("#twotabsearchtextbox", keyword);
-        await Promise.all([
-          page.keyboard.press("Enter"),
-          page.waitForNavigation({ waitUntil: "networkidle2", timeout: 60000 })
-        ]);
-    } catch (searchError) {
-        console.log("    [Amazon] 検索ボックスが見つからないため、URLを直接開きます:", searchError.message);
-        const searchUrl = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
-        await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 60000 });
-    }
+    // 3. 検索 (常にURLを直接開く)
+    console.log("    [Amazon] 検索ボックス操作をスキップし、URLを直接開きます。");
+    const searchUrl = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
+    await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 60000 });
     
     // ロボット確認
     if (await page.$("#captchacharacters")) {
@@ -150,8 +141,14 @@ async function checkAmazon(keyword) {
       let targetTotalRank = null;
       let foundInOrganic = false;
 
+      console.log(`[Amazon Evaluate] Found ${items.length} items.`);
+
       for (const item of items) {
-        if (item.getAttribute("data-asin") === "") continue;
+        const asin = item.getAttribute("data-asin");
+        if (asin === "") {
+          console.log("[Amazon Evaluate] Skipping item with empty ASIN.");
+          continue;
+        }
 
         // スポンサー判定 (より詳細に)
         const isSponsored = item.querySelector(".puis-sponsored-label-text, .s-label-popover-default, .s-sponsored-label-info-icon, .s-label-popover, .AdHolder") !== null || 
@@ -161,7 +158,12 @@ async function checkAmazon(keyword) {
         
         const titleEl = item.querySelector("h2");
         const title = titleEl ? titleEl.textContent.trim() : "";
-        if (!title) continue;
+        if (!title) {
+          console.log(`[Amazon Evaluate] Skipping item ${asin} with no title.`);
+          continue;
+        }
+
+        console.log(`[Amazon Evaluate] Processing item ${asin}, Title: ${title}, Sponsored: ${isSponsored}`);
 
         if (isSponsored) {
           prCount++;
@@ -176,10 +178,15 @@ async function checkAmazon(keyword) {
             targetRank = organicRank;
             targetTotalRank = organicRank + prCount;
             foundInOrganic = true;
+            console.log(`[Amazon Evaluate] Target found for ${asin} at organic rank ${organicRank}, total rank ${targetTotalRank}`);
           }
         }
-        if (organicRank >= 100) break;
+        if (organicRank >= 100) {
+          console.log("[Amazon Evaluate] Reached 100 organic ranks, stopping.");
+          break;
+        }
       }
+      console.log(`[Amazon Evaluate] Final ranks: targetRank=${targetRank}, organicRank=${organicRank}, prCount=${prCount}`);
       return { rank: targetTotalRank, organicRank: targetRank, prCount: prCount };
     });
 
