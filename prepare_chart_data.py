@@ -1,4 +1,5 @@
 import json
+import os
 import pandas as pd
 
 def prepare_chart_data(history_file):
@@ -57,8 +58,8 @@ def prepare_chart_data(history_file):
     return chart_data
 
 if __name__ == '__main__':
-    history_file = path.join(path.dirname(__file__), 'rank_history.json')
+    history_file = os.path.join(os.path.dirname(__file__), 'rank_history.json')
     data = prepare_chart_data(history_file)
-    with open('/home/ubuntu/limit48-rank-monitor/chart_data.json', 'w', encoding='utf-8') as f:
+    with open(os.path.join(os.path.dirname(__file__), 'chart_data.json'), 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     print("Chart data prepared and saved to chart_data.json")
