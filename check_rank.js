@@ -73,44 +73,68 @@ async function checkRakuten(keyword) {
 async function checkAmazon(keyword) {
   const browser = await puppeteer.launch({
     headless: "new",
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--lang=ja-JP,ja']
+    args: [
+      '--no-sandbox', 
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+      '--lang=ja-JP,ja'
+    ]
   });
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 2000 });
-  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+  
+  // ブラウザ指紋の偽装
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    Object.defineProperty(navigator, 'languages', { get: () => ['ja-JP', 'ja'] });
+    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+  });
+
+  await page.setViewport({ width: 1280, height: 1000 });
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
 
   try {
     // 1. トップページへ
     await page.goto('https://www.amazon.co.jp/', { waitUntil: 'networkidle2', timeout: 60000 });
-    
-    // 2. お届け先を日本に設定 (郵便番号 100-0001)
+    await new Promise(r => setTimeout(r, 2000));
+
+    // 2. お届け先設定 (より確実に)
     try {
       const addressBtn = await page.$('#nav-global-location-slot');
       if (addressBtn) {
         await addressBtn.click();
-        await new Promise(r => setTimeout(r, 2000));
+        await page.waitForSelector('#GLUXZipUpdateInput', { visible: true, timeout: 5000 });
         await page.type('#GLUXZipUpdateInput', '1000001');
         await page.click('#GLUXZipUpdate');
         await new Promise(r => setTimeout(r, 2000));
-        await page.reload({ waitUntil: 'networkidle2' });
+        // 設定を確定させるための「完了」ボタンがあれば押す
+        const doneBtn = await page.$('.a-popover-footer #GLUXConfirmClose');
+        if (doneBtn) await doneBtn.click();
+        await new Promise(r => setTimeout(r, 2000));
       }
     } catch (e) {
-      console.log("    [Amazon] お届け先設定スキップ:", e.message);
+      console.log("    [Amazon] お届け先設定に課題:", e.message);
     }
 
-    // 3. 検索
-    const url = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+    // 3. 検索 (検索窓に入力する動作をシミュレート)
+    await page.type('#twotabsearchtextbox', keyword);
+    await Promise.all([
+      page.keyboard.press('Enter'),
+      page.waitForNavigation({ waitUntil: 'networkidle2' })
+    ]);
     
-    // スクロール
-    await page.evaluate(async () => {
-      for (let i = 0; i < 15; i++) {
-        window.scrollBy(0, 400);
-        await new Promise(r => setTimeout(r, 400));
-      }
-    });
+    // ロボット確認
+    if (await page.$('#captchacharacters')) {
+      console.log("    [Amazon] ロボット確認画面を検知しました。");
+      return { rank: null, organicRank: null, prCount: 0 };
+    }
+
+    // じっくりスクロール
+    for (let i = 0; i < 10; i++) {
+      await page.evaluate(() => window.scrollBy(0, 500));
+      await new Promise(r => setTimeout(r, 800 + Math.random() * 500));
+    }
     
-    await new Promise(r => setTimeout(r, 3000));
+    await new Promise(r => setTimeout(r, 2000));
 
     const results = await page.evaluate(() => {
       const items = Array.from(document.querySelectorAll('.s-result-item[data-asin]'));
@@ -123,10 +147,11 @@ async function checkAmazon(keyword) {
       for (const item of items) {
         if (item.getAttribute('data-asin') === "") continue;
 
-        // スポンサー判定
+        // スポンサー判定 (より詳細に)
         const isSponsored = item.querySelector('.puis-sponsored-label-text, .s-label-popover-default, .s-sponsored-label-info-icon, .s-label-popover, .AdHolder') !== null || 
                             item.innerText.includes('スポンサー') || 
-                            item.innerText.includes('Sponsored');
+                            item.innerText.includes('Sponsored') ||
+                            item.innerHTML.includes('sponsored-label');
         
         const titleEl = item.querySelector('h2');
         const title = titleEl ? titleEl.textContent.trim() : "";
