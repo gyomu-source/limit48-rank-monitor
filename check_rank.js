@@ -94,7 +94,7 @@ async function checkAmazon(keyword) {
 
   try {
     // 1. トップページへ
-    await page.goto("https://www.amazon.co.jp/", { waitUntil: "networkidle0", timeout: 180000 });
+    await page.goto("https://www.amazon.co.jp/", { waitUntil: "domcontentloaded", timeout: 180000 });
     await new Promise(r => setTimeout(r, 5000)); // ページが完全にロードされるまで待機
 
     // ポップアップを閉じる試行
@@ -114,8 +114,12 @@ async function checkAmazon(keyword) {
 
     // 2. お届け先設定
     try {
-      await page.waitForSelector("#nav-global-location-popover-link", { timeout: 5000 });
-      await page.click("#nav-global-location-popover-link");
+      const locationPopoverLink = await page.$("#nav-global-location-popover-link");
+      if (locationPopoverLink) {
+        await locationPopoverLink.click();
+      } else {
+        console.log("    [Amazon] お届け先設定のポップアップリンクが見つかりませんでした。スキップします。");
+      }
       await page.waitForSelector("#GLUXZipUpdateInput", { visible: true, timeout: 5000 });
       await page.type("#GLUXZipUpdateInput", "150-0043"); // 渋谷の郵便番号
       await page.click("#GLUXZipUpdate-announce");
