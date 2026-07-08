@@ -94,7 +94,7 @@ async function checkAmazon(keyword) {
 
   try {
     // 1. トップページへ
-    await page.goto("https://www.amazon.co.jp/", { waitUntil: "networkidle2", timeout: 90000 });
+    await page.goto("https://www.amazon.co.jp/", { waitUntil: "networkidle0", timeout: 180000 });
     await new Promise(r => setTimeout(r, 5000)); // ページが完全にロードされるまで待機
 
     // ポップアップを閉じる試行
@@ -110,31 +110,23 @@ async function checkAmazon(keyword) {
     }
     await new Promise(r => setTimeout(r, 2000));
 
-    // 2. お届け先設定 (より確実に)
-    try {
-      const addressBtn = await page.$('#nav-global-location-slot');
-      if (addressBtn) {
-        await addressBtn.click();
-        await page.waitForSelector('#GLUXZipUpdateInput', { visible: true, timeout: 5000 });
-        await page.type('#GLUXZipUpdateInput', '1000001');
-        await page.click("input[aria-labelledby=\"GLUXZipUpdate-announce\"]");
-        await new Promise(r => setTimeout(r, 2000));
-        // 設定を確定させるための「完了」ボタンがあれば押す
-        const doneBtn = await page.$('.a-popover-footer #GLUXConfirmClose');
-        if (doneBtn) await doneBtn.click();
-        await new Promise(r => setTimeout(r, 2000));
-      }
-    } catch (e) {
-      console.log("    [Amazon] お届け先設定に課題:", e.message);
-      // お届け先設定が失敗しても処理を続行
-    }
+    // 2. お届け先設定 (一時的に無効化)
+    console.log('    [Amazon] お届け先設定の処理を一時的にスキップします。');
+    await new Promise(r => setTimeout(r, 2000));
 
-    // 3. 検索 (検索窓に入力する動作をシミュレート)
-    await page.type("#twotabsearchtextbox", keyword);
-    await Promise.all([
-      page.keyboard.press("Enter"),
-      page.waitForNavigation({ waitUntil: "networkidle2", timeout: 60000 })
-    ]);
+    // 3. 検索 (検索窓に入力する動作をシミュレート、失敗時はURL直接遷移)
+    try {
+        await page.waitForSelector("#twotabsearchtextbox", { visible: true, timeout: 10000 });
+        await page.type("#twotabsearchtextbox", keyword);
+        await Promise.all([
+          page.keyboard.press("Enter"),
+          page.waitForNavigation({ waitUntil: "networkidle2", timeout: 60000 })
+        ]);
+    } catch (searchError) {
+        console.log("    [Amazon] 検索ボックスが見つからないため、URLを直接開きます:", searchError.message);
+        const searchUrl = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
+        await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 60000 });
+    }
     
     // ロボット確認
     if (await page.$("#captchacharacters")) {
