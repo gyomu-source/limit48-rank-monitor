@@ -19,7 +19,6 @@ async function checkRakuten(keyword) {
     const url = `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(keyword)}/`;
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
     
-    // スクロールしてPR枠を読み込ませる
     await page.evaluate(async () => {
       await new Promise((resolve) => {
         let totalHeight = 0;
@@ -78,30 +77,22 @@ async function checkAmazon(keyword) {
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 1600 });
+  await page.setViewport({ width: 1280, height: 2000 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
   try {
     const url = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
     
+    // Amazonはスクロールを複数回に分けて確実に行う
     await page.evaluate(async () => {
-      await new Promise((resolve) => {
-        let totalHeight = 0;
-        let distance = 400;
-        let timer = setInterval(() => {
-          let scrollHeight = document.body.scrollHeight;
-          window.scrollBy(0, distance);
-          totalHeight += distance;
-          if(totalHeight >= 3000 || totalHeight >= scrollHeight){
-            clearInterval(timer);
-            resolve();
-          }
-        }, 200);
-      });
+      for (let i = 0; i < 8; i++) {
+        window.scrollBy(0, 500);
+        await new Promise(r => setTimeout(r, 300));
+      }
     });
     
-    await new Promise(r => setTimeout(r, 2000));
+    await new Promise(r => setTimeout(r, 3000));
 
     const results = await page.evaluate((targetBrand) => {
       const items = Array.from(document.querySelectorAll('[data-component-type="s-search-result"]'));
@@ -112,13 +103,26 @@ async function checkAmazon(keyword) {
       let found = false;
 
       for (const item of items) {
-        // Amazonのスポンサーラベル判定を大幅に強化
-        const isSponsored = item.querySelector('.puis-sponsored-label-text') !== null || 
-                            item.querySelector('.s-label-popover-default') !== null || 
-                            item.querySelector('.s-sponsored-label-info-icon') !== null ||
-                            item.querySelector('.s-label-popover') !== null ||
-                            item.innerText.includes('スポンサー') ||
-                            item.innerText.includes('Sponsored');
+        // Amazonのスポンサーラベル判定 (さらに広範囲)
+        const sponsoredSelectors = [
+          '.puis-sponsored-label-text',
+          '.s-label-popover-default',
+          '.s-sponsored-label-info-icon',
+          '.s-label-popover',
+          '[data-component-type="sp-ad-result"]'
+        ];
+        
+        let isSponsored = sponsoredSelectors.some(s => item.querySelector(s) !== null);
+        
+        // テキストベースの判定 (innerText だけでなく innerHTML や aria-label も考慮)
+        const itemText = item.innerText || "";
+        const itemHtml = item.innerHTML || "";
+        if (!isSponsored) {
+          if (itemText.includes('スポンサー') || itemText.includes('Sponsored') || 
+              itemHtml.includes('スポンサー') || itemHtml.includes('Sponsored')) {
+            isSponsored = true;
+          }
+        }
         
         const title = item.querySelector('h2')?.textContent || "";
 
@@ -186,7 +190,6 @@ async function run() {
     results: results
   });
 
-  // 直近100件のみ保持
   if (history.length > 100) history = history.slice(-100);
 
   fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
