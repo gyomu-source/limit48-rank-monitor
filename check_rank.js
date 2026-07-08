@@ -94,7 +94,7 @@ async function checkAmazon(keyword) {
 
   try {
     // 1. トップページへ
-    await page.goto('https://www.amazon.co.jp/', { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.goto("https://www.amazon.co.jp/", { waitUntil: "networkidle2", timeout: 90000 });
     await new Promise(r => setTimeout(r, 5000)); // ページが完全にロードされるまで待機
 
     // ポップアップを閉じる試行
@@ -117,7 +117,7 @@ async function checkAmazon(keyword) {
         await addressBtn.click();
         await page.waitForSelector('#GLUXZipUpdateInput', { visible: true, timeout: 5000 });
         await page.type('#GLUXZipUpdateInput', '1000001');
-        await page.click('#GLUXZipUpdate');
+        await page.click("input[aria-labelledby=\"GLUXZipUpdate-announce\"]");
         await new Promise(r => setTimeout(r, 2000));
         // 設定を確定させるための「完了」ボタンがあれば押す
         const doneBtn = await page.$('.a-popover-footer #GLUXConfirmClose');
@@ -133,7 +133,7 @@ async function checkAmazon(keyword) {
     await page.type("#twotabsearchtextbox", keyword);
     await Promise.all([
       page.keyboard.press("Enter"),
-      page.waitForNavigation({ waitUntil: "networkidle2" })
+      page.waitForNavigation({ waitUntil: "networkidle2", timeout: 60000 })
     ]);
     
     // ロボット確認
