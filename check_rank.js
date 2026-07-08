@@ -80,7 +80,6 @@ async function checkAmazon(keyword) {
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
   try {
-    // 直接検索結果へ (ただし、Refererを偽装)
     await page.setExtraHTTPHeaders({ 'Referer': 'https://www.amazon.co.jp/' });
     const url = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
@@ -96,19 +95,23 @@ async function checkAmazon(keyword) {
     await new Promise(r => setTimeout(r, 3000));
 
     const results = await page.evaluate(() => {
-      // Amazonのグリッド表示における全アイテムを取得
+      // 1. まずページ最上部のブランド広告などをチェック
+      const brandAds = document.querySelectorAll('.ad-unit, [data-component-type="sp-ad-result"]');
+      let brandAdCount = brandAds.length;
+
+      // 2. 検索結果アイテムを取得
       const items = Array.from(document.querySelectorAll('.s-result-item[data-asin]'));
       
-      let prCount = 0;
+      let prCount = brandAdCount;
       let organicRank = 0;
       let targetRank = null;
       let targetTotalRank = null;
-      let found = false;
+      let foundInOrganic = false;
 
       for (const item of items) {
         if (item.getAttribute('data-asin') === "") continue;
 
-        // スポンサー判定: クラス名、テキスト、aria-labelを統合的にチェック
+        // スポンサー判定
         const isSponsored = item.querySelector('.puis-sponsored-label-text, .s-label-popover-default, .s-sponsored-label-info-icon, .s-label-popover, .AdHolder') !== null || 
                             item.innerText.includes('スポンサー') || 
                             item.innerText.includes('Sponsored');
@@ -119,20 +122,22 @@ async function checkAmazon(keyword) {
 
         if (isSponsored) {
           prCount++;
+          // 広告枠に自社商品がいても、ここでは順位としてカウントしない（広告件数のみ加算）
         } else {
           organicRank++;
           const lowerTitle = title.toLowerCase();
-          // 「lim:it」「limit」「リムイット」すべてに反応するように
           const isTarget = lowerTitle.includes('limit') || 
                            lowerTitle.includes('リムイット') || 
                            lowerTitle.includes('lim:it');
           
-          if (isTarget && !found) {
+          // 自然検索結果として初めて見つけた場合のみ、順位として記録
+          if (isTarget && !foundInOrganic) {
             targetRank = organicRank;
             targetTotalRank = organicRank + prCount;
-            found = true;
+            foundInOrganic = true;
           }
         }
+        if (organicRank >= 100) break;
       }
       return { rank: targetTotalRank, organicRank: targetRank, prCount: prCount };
     });
