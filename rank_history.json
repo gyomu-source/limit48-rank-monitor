@@ -1243,5 +1243,36 @@
         }
       }
     }
+  },
+  {
+    "timestamp": "2026-07-08T11:25:53.050Z",
+    "dateStr": "07/08",
+    "timeStr": "20:25",
+    "results": {
+      "rakuten": {
+        "ファスティング": {
+          "rank": 14,
+          "organicRank": 9,
+          "prCount": 5
+        },
+        "酵素ドリンク": {
+          "rank": 19,
+          "organicRank": 14,
+          "prCount": 5
+        }
+      },
+      "amazon": {
+        "ファスティング": {
+          "rank": null,
+          "organicRank": null,
+          "prCount": 0
+        },
+        "酵素ドリンク": {
+          "rank": null,
+          "organicRank": null,
+          "prCount": 0
+        }
+      }
+    }
   }
 ]
