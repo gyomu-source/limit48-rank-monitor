@@ -77,26 +77,31 @@ async function checkAmazon(keyword) {
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 2000 });
+  await page.setViewport({ width: 1280, height: 2500 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
   try {
     const url = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
     
-    // Amazonはスクロールを複数回に分けて確実に行う
+    // Amazonはスクロールをより丁寧に行う
     await page.evaluate(async () => {
-      for (let i = 0; i < 8; i++) {
-        window.scrollBy(0, 500);
-        await new Promise(r => setTimeout(r, 300));
+      for (let i = 0; i < 10; i++) {
+        window.scrollBy(0, 400);
+        await new Promise(r => setTimeout(r, 400));
       }
     });
     
     await new Promise(r => setTimeout(r, 3000));
 
     const results = await page.evaluate((targetBrand) => {
+      // 検索結果のアイテムを取得
       const items = Array.from(document.querySelectorAll('[data-component-type="s-search-result"]'));
-      let prCount = 0;
+      
+      // ページ上部の「スポンサーブランド広告」などの特殊な枠をカウント
+      const topAds = document.querySelectorAll('.ad-unit, .slot=UPPER, .slot=MIDDLE').length;
+      
+      let prCount = topAds;
       let organicRank = 0;
       let targetRank = null;
       let targetTotalRank = null;
@@ -109,17 +114,21 @@ async function checkAmazon(keyword) {
           '.s-label-popover-default',
           '.s-sponsored-label-info-icon',
           '.s-label-popover',
-          '[data-component-type="sp-ad-result"]'
+          '[data-component-type="sp-ad-result"]',
+          '.s-sponsored-grid-header'
         ];
         
         let isSponsored = sponsoredSelectors.some(s => item.querySelector(s) !== null);
         
-        // テキストベースの判定 (innerText だけでなく innerHTML や aria-label も考慮)
-        const itemText = item.innerText || "";
+        // テキスト・属性ベースの判定
         const itemHtml = item.innerHTML || "";
+        const itemText = item.innerText || "";
+        const containerProps = item.getAttribute('data-component-props') || "";
+        
         if (!isSponsored) {
           if (itemText.includes('スポンサー') || itemText.includes('Sponsored') || 
-              itemHtml.includes('スポンサー') || itemHtml.includes('Sponsored')) {
+              itemHtml.includes('スポンサー') || itemHtml.includes('Sponsored') ||
+              containerProps.includes('sponsored') || containerProps.includes('ad-result')) {
             isSponsored = true;
           }
         }
