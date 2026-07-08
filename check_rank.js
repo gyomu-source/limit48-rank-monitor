@@ -110,8 +110,20 @@ async function checkAmazon(keyword) {
     }
     await new Promise(r => setTimeout(r, 2000));
 
-    // 2. お届け先設定 (一時的に無効化)
-    console.log('    [Amazon] お届け先設定の処理を一時的にスキップします。');
+
+
+    // 2. お届け先設定
+    try {
+      await page.waitForSelector("#nav-global-location-popover-link", { timeout: 5000 });
+      await page.click("#nav-global-location-popover-link");
+      await page.waitForSelector("#GLUXZipUpdateInput", { visible: true, timeout: 5000 });
+      await page.type("#GLUXZipUpdateInput", "150-0043"); // 渋谷の郵便番号
+      await page.click("#GLUXZipUpdate-announce");
+      await page.waitForNavigation({ waitUntil: "networkidle2", timeout: 10000 });
+      console.log("    [Amazon] お届け先を渋谷に設定しました。");
+    } catch (e) {
+      console.log("    [Amazon] お届け先設定のポップアップが表示されないか、設定に失敗しました:", e.message);
+    }
     await new Promise(r => setTimeout(r, 2000));
 
     // 3. 検索 (常にURLを直接開く)
