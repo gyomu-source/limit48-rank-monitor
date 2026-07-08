@@ -76,11 +76,29 @@ async function checkAmazon(keyword) {
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--lang=ja-JP,ja']
   });
   const page = await browser.newPage();
-  await page.setViewport({ width: 1280, height: 4000 });
+  await page.setViewport({ width: 1280, height: 2000 });
   await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
   try {
-    await page.setExtraHTTPHeaders({ 'Referer': 'https://www.amazon.co.jp/' });
+    // 1. トップページへ
+    await page.goto('https://www.amazon.co.jp/', { waitUntil: 'networkidle2', timeout: 60000 });
+    
+    // 2. お届け先を日本に設定 (郵便番号 100-0001)
+    try {
+      const addressBtn = await page.$('#nav-global-location-slot');
+      if (addressBtn) {
+        await addressBtn.click();
+        await new Promise(r => setTimeout(r, 2000));
+        await page.type('#GLUXZipUpdateInput', '1000001');
+        await page.click('#GLUXZipUpdate');
+        await new Promise(r => setTimeout(r, 2000));
+        await page.reload({ waitUntil: 'networkidle2' });
+      }
+    } catch (e) {
+      console.log("    [Amazon] お届け先設定スキップ:", e.message);
+    }
+
+    // 3. 検索
     const url = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
     
@@ -95,14 +113,8 @@ async function checkAmazon(keyword) {
     await new Promise(r => setTimeout(r, 3000));
 
     const results = await page.evaluate(() => {
-      // 1. まずページ最上部のブランド広告などをチェック
-      const brandAds = document.querySelectorAll('.ad-unit, [data-component-type="sp-ad-result"]');
-      let brandAdCount = brandAds.length;
-
-      // 2. 検索結果アイテムを取得
       const items = Array.from(document.querySelectorAll('.s-result-item[data-asin]'));
-      
-      let prCount = brandAdCount;
+      let prCount = 0;
       let organicRank = 0;
       let targetRank = null;
       let targetTotalRank = null;
@@ -122,7 +134,6 @@ async function checkAmazon(keyword) {
 
         if (isSponsored) {
           prCount++;
-          // 広告枠に自社商品がいても、ここでは順位としてカウントしない（広告件数のみ加算）
         } else {
           organicRank++;
           const lowerTitle = title.toLowerCase();
@@ -130,7 +141,6 @@ async function checkAmazon(keyword) {
                            lowerTitle.includes('リムイット') || 
                            lowerTitle.includes('lim:it');
           
-          // 自然検索結果として初めて見つけた場合のみ、順位として記録
           if (isTarget && !foundInOrganic) {
             targetRank = organicRank;
             targetTotalRank = organicRank + prCount;
