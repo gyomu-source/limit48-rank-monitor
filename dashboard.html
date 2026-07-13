@@ -1,0 +1,345 @@
+<title>limit48 タスクダッシュボード</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --ink: #f4efe8;
+    --surface: #ffffff;
+    --surface-2: #faf6f0;
+    --border: #e3dbcd;
+    --text: #1d2422;
+    --text-muted: #6b7370;
+    --accent: #c15a2b;
+    --accent-soft: #f2ded0;
+    --success: #3f7d5c;
+    --success-soft: #dfeee4;
+    --warning: #a9781f;
+    --warning-soft: #f5e7c8;
+    --critical: #af3b34;
+    --critical-soft: #f6dcd9;
+    --chan-rakuten: #b6392f;
+    --chan-amazon: #b8721c;
+    --chan-tiktok: #2c7c76;
+    --chan-yahoo: #6f4fa0;
+    --chan-shopify: #3a7ca0;
+    --shadow: 0 1px 2px rgba(30, 24, 18, 0.06), 0 8px 24px rgba(30, 24, 18, 0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ink: #14181a;
+      --surface: #1b2023;
+      --surface-2: #20262a;
+      --border: #313a3e;
+      --text: #eceeee;
+      --text-muted: #93a0a3;
+      --accent: #e0895a;
+      --accent-soft: #3a2a20;
+      --success: #6fbb92;
+      --success-soft: #1f3329;
+      --warning: #d8ab55;
+      --warning-soft: #3a2f18;
+      --critical: #e2726a;
+      --critical-soft: #3c211e;
+      --chan-rakuten: #e0685c;
+      --chan-amazon: #e0a04f;
+      --chan-tiktok: #5cb3ac;
+      --chan-yahoo: #a58bd1;
+      --chan-shopify: #6ba9cc;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #14181a;
+    --surface: #1b2023;
+    --surface-2: #20262a;
+    --border: #313a3e;
+    --text: #eceeee;
+    --text-muted: #93a0a3;
+    --accent: #e0895a;
+    --accent-soft: #3a2a20;
+    --success: #6fbb92;
+    --success-soft: #1f3329;
+    --warning: #d8ab55;
+    --warning-soft: #3a2f18;
+    --critical: #e2726a;
+    --critical-soft: #3c211e;
+    --chan-rakuten: #e0685c;
+    --chan-amazon: #e0a04f;
+    --chan-tiktok: #5cb3ac;
+    --chan-yahoo: #a58bd1;
+    --chan-shopify: #6ba9cc;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.25);
+  }
+  :root[data-theme="light"] {
+    --ink: #f4efe8;
+    --surface: #ffffff;
+    --surface-2: #faf6f0;
+    --border: #e3dbcd;
+    --text: #1d2422;
+    --text-muted: #6b7370;
+    --accent: #c15a2b;
+    --accent-soft: #f2ded0;
+    --success: #3f7d5c;
+    --success-soft: #dfeee4;
+    --warning: #a9781f;
+    --warning-soft: #f5e7c8;
+    --critical: #af3b34;
+    --critical-soft: #f6dcd9;
+    --chan-rakuten: #b6392f;
+    --chan-amazon: #b8721c;
+    --chan-tiktok: #2c7c76;
+    --chan-yahoo: #6f4fa0;
+    --chan-shopify: #3a7ca0;
+    --shadow: 0 1px 2px rgba(30, 24, 18, 0.06), 0 8px 24px rgba(30, 24, 18, 0.05);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--ink);
+    color: var(--text);
+    font-family: "Yu Gothic Medium", "Yu Gothic", "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Noto Sans JP", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  body { padding: 32px 20px 64px; }
+  .page { max-width: 880px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+
+  .masthead { display: flex; flex-direction: column; gap: 4px; }
+  .masthead .eyebrow {
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700;
+  }
+  .masthead h1 { font-size: 28px; margin: 2px 0 0; letter-spacing: -0.01em; text-wrap: balance; }
+  .masthead .meta { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .masthead .meta b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+  .kpi {
+    background: var(--surface);
+    padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .kpi .label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); font-weight: 600; }
+  .kpi .value { font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  .kpi .sub { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .kpi.accent .value { color: var(--accent); }
+  .progress-track {
+    height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; margin-top: 2px;
+    border: 1px solid var(--border);
+  }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; }
+
+  .section { display: flex; flex-direction: column; gap: 12px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .section-head h2 { font-size: 15px; margin: 0; letter-spacing: 0.01em; }
+  .section-head .count { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  .attention {
+    display: flex; flex-direction: column; gap: 8px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 6px; box-shadow: var(--shadow);
+  }
+  .attn-row {
+    display: grid; grid-template-columns: 84px 1fr auto; align-items: center; gap: 12px;
+    padding: 10px 12px; border-radius: 9px;
+  }
+  .attn-row:hover { background: var(--surface-2); }
+  .attn-date { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .attn-date.today { color: var(--critical); }
+  .attn-date.done { color: var(--text-muted); }
+  .attn-title { font-size: 14px; font-weight: 600; }
+  .attn-detail { font-size: 12px; color: var(--text-muted); font-weight: 400; display: block; margin-top: 2px; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.02em;
+    padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+  }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .chip.done { background: var(--success-soft); color: var(--success); }
+  .chip.today { background: var(--critical-soft); color: var(--critical); }
+  .chip.waiting { background: var(--warning-soft); color: var(--warning); }
+  .chip.open { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+
+  .board {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 14px;
+  }
+  .channel {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 16px 8px; box-shadow: var(--shadow);
+    border-top: 3px solid var(--c);
+  }
+  .channel h3 {
+    margin: 0 0 10px; font-size: 13px; letter-spacing: 0.02em; color: var(--c);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .channel h3 .n { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+  .task { padding: 8px 0; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 3px; }
+  .task:last-child { border-bottom: none; }
+  .task .t { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+  .task .t span:first-child { text-wrap: balance; }
+  .task .due { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  details.log { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow); }
+  details.log summary {
+    cursor: pointer; padding: 14px 16px; font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: space-between; list-style: none;
+  }
+  details.log summary::-webkit-details-marker { display: none; }
+  details.log summary::after { content: "開く"; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+  details.log[open] summary::after { content: "閉じる"; }
+  .log-list { padding: 0 16px 14px; display: flex; flex-direction: column; gap: 0; }
+  .log-row {
+    display: grid; grid-template-columns: 96px 1fr; gap: 12px; padding: 7px 0;
+    border-top: 1px solid var(--border); font-size: 12.5px;
+  }
+  .log-row .d { color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+  .foot { font-size: 11.5px; color: var(--text-muted); text-align: center; padding-top: 8px; }
+  .foot a { color: var(--text-muted); }
+
+  @media (max-width: 520px) {
+    .attn-row { grid-template-columns: 1fr; }
+    .attn-date { display: none; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <div class="eyebrow">limit48 — Secretary Ops</div>
+    <h1>タスクダッシュボード</h1>
+    <div class="meta">最終更新 <b>2026年7月13日（月）</b>　｜　鷹橋 蓮（秘書室）</div>
+  </header>
+
+  <div class="kpi-strip">
+    <div class="kpi accent">
+      <div class="label">6月 最終収益（手残り）</div>
+      <div class="value">¥2,378,354</div>
+      <div class="sub">目標 ¥6,600,000 に対して 36.0%</div>
+      <div class="progress-track"><div class="progress-fill" style="width:36%"></div></div>
+    </div>
+    <div class="kpi">
+      <div class="label">6月 総売上（税込）</div>
+      <div class="value">¥18,193,092</div>
+      <div class="sub">全5モール合算・確定値</div>
+    </div>
+    <div class="kpi">
+      <div class="label">6月 全モール営業利益</div>
+      <div class="value">¥3,771,481</div>
+      <div class="sub">RSLコスト控除前</div>
+    </div>
+    <div class="kpi">
+      <div class="label">本日の対応</div>
+      <div class="value">2 <span style="font-size:13px;font-weight:600;color:var(--text-muted);">件</span></div>
+      <div class="sub">要判断 1・期日到来 1</div>
+    </div>
+  </div>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>今日・直近で見るところ</h2>
+      <span class="count">7/13時点</span>
+    </div>
+    <div class="attention">
+      <div class="attn-row">
+        <span class="attn-date today">7/13 本日</span>
+        <span class="attn-title">ステップクーポン設定変更<span class="attn-detail">step-coupon.com／②5%OFF・併用可 ③有効期限21日。マラソン後の対応、本日期限</span></span>
+        <span class="chip waiting">未着手</span>
+      </div>
+      <div class="attn-row">
+        <span class="attn-date done">7/13 完了</span>
+        <span class="attn-title">マラソン後 単価戻し<span class="attn-detail">TDAリタゲ 2.5円→2.0円／RPP商品CPC 120円→100円（一旦の水準）</span></span>
+        <span class="chip done">完了</span>
+      </div>
+      <div class="attn-row">
+        <span class="attn-date">7/10 超過</span>
+        <span class="attn-title">Amazon 広告効果分析<span class="attn-detail">楽天・TikTokは分析済み。Amazonのみ未着手のまま期限超過</span></span>
+        <span class="chip open">未着手</span>
+      </div>
+      <div class="attn-row">
+        <span class="attn-date">7/15</span>
+        <span class="attn-title">GKラインフォローメール改訂／AmebaPick効果検証<span class="attn-detail">2件とも同日期限。8月終了後の方針決定が絡む</span></span>
+        <span class="chip open">未着手</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>チャネル別タスクボード</h2>
+      <span class="count">全24件中 未完了 13件</span>
+    </div>
+    <div class="board">
+
+      <div class="channel" style="--c:var(--chan-rakuten)">
+        <h3>楽天市場 <span class="n">5件</span></h3>
+        <div class="task"><div class="t"><span>GKラインフォローメール改訂</span><span class="chip open">未着手</span></div><div class="due">期限 7/15</div></div>
+        <div class="task"><div class="t"><span>アフィリエイト成果CSV取得（12ヶ月分）</span><span class="chip open">未着手</span></div><div class="due">期限 7/15</div></div>
+        <div class="task"><div class="t"><span>受注データCSV取得（6〜12ヶ月）</span><span class="chip open">未着手</span></div><div class="due">期限 7/15</div></div>
+        <div class="task"><div class="t"><span>AmebaPick効果検証・8月終了後方針</span><span class="chip open">未着手</span></div><div class="due">期限 7/15</div></div>
+        <div class="task"><div class="t"><span>マラソン後RPP追加KW検討</span><span class="chip waiting">保留中</span></div><div class="due">マラソン後・ROASを見て判断</div></div>
+      </div>
+
+      <div class="channel" style="--c:var(--chan-amazon)">
+        <h3>Amazon <span class="n">2件</span></h3>
+        <div class="task"><div class="t"><span>広告ROASデータ取得・確認</span><span class="chip open">未着手</span></div><div class="due">期限 7/15</div></div>
+        <div class="task"><div class="t"><span>定期お得便への誘導強化策を検討</span><span class="chip open">未着手</span></div><div class="due">期限 7/15</div></div>
+      </div>
+
+      <div class="channel" style="--c:var(--chan-tiktok)">
+        <h3>TikTok Shop <span class="n">3件</span></h3>
+        <div class="task"><div class="t"><span>ガストロ費用対効果レビュー・8月方針</span><span class="chip open">未着手</span></div><div class="due">期限 7/15</div></div>
+        <div class="task"><div class="t"><span>Live配信セラー割引上限（20%→10%）</span><span class="chip open">未着手</span></div><div class="due">期限 7/15</div></div>
+        <div class="task"><div class="t"><span>クリエイター別ROAS計測設定</span><span class="chip open">未着手</span></div><div class="due">期限 7/15</div></div>
+      </div>
+
+      <div class="channel" style="--c:var(--chan-shopify)">
+        <h3>Shopify <span class="n">6件</span></h3>
+        <div class="task"><div class="t"><span>Meta広告テスト配信開始</span><span class="chip open">未着手</span></div><div class="due">期限 7/7（超過）</div></div>
+        <div class="task"><div class="t"><span>Seal Subscriptions マイルストーン追加</span><span class="chip open">未着手</span></div><div class="due">期限 7/10（超過）</div></div>
+        <div class="task"><div class="t"><span>DawnにTasteセクション移植</span><span class="chip open">未着手</span></div><div class="due">期限 7/10（超過）</div></div>
+        <div class="task"><div class="t"><span>Dawnトップページ整備・切り替え</span><span class="chip open">未着手</span></div><div class="due">期限 7/15</div></div>
+        <div class="task"><div class="t"><span>アフィリエイトタグ設置確認（サンクスページ）</span><span class="chip open">未着手</span></div><div class="due">期限 7/15</div></div>
+        <div class="task"><div class="t"><span>Metaピクセル設置確認</span><span class="chip open">未着手</span></div><div class="due">期限 7/15</div></div>
+      </div>
+
+      <div class="channel" style="--c:var(--chan-yahoo)">
+        <h3>秘書室・全体 <span class="n">2件</span></h3>
+        <div class="task"><div class="t"><span>lit.link デザイン改善</span><span class="chip open">未着手</span></div><div class="due">期限 7/17</div></div>
+        <div class="task"><div class="t"><span>定期購入者数の実績確認</span><span class="chip waiting">一部完了</span></div><div class="due">サンプリング本数は反映済み。定期購入者数のみ残</div></div>
+      </div>
+
+    </div>
+  </section>
+
+  <details class="log">
+    <summary>完了ログ（直近10件）</summary>
+    <div class="log-list">
+      <div class="log-row"><span class="d">7/13</span><span>マラソン後 単価戻し（TDAリタゲ2.5→2.0円／RPP商品CPC120→100円）</span></div>
+      <div class="log-row"><span class="d">7/10</span><span>6月EC月次レポート完成・確定（RSL実額・Q10/Yahoo/Amazon/TikTok売上修正・楽天広告費実額化・RSLコスト別表化。最終収益 ¥2,378,354）</span></div>
+      <div class="log-row"><span class="d">7/8</span><span>AIris・新規TDA 効果判断（両方停止。5週間ROAS 0%）</span></div>
+      <div class="log-row"><span class="d">7/7</span><span>チラシA・B 仕上げ・QR差し込み・印刷発注</span></div>
+      <div class="log-row"><span class="d">7/7</span><span>バナー作成（1000ポキ・デリ12食18食用）</span></div>
+      <div class="log-row"><span class="d">7/4</span><span>メルマガRMS貼り付け・配信予約</span></div>
+      <div class="log-row"><span class="d">7/3</span><span>楽天検索順位モニター作成・GitHub Pages公開</span></div>
+      <div class="log-row"><span class="d">7/3</span><span>TDA単価変更（2円→8円）マラソン・5と0のつく日</span></div>
+      <div class="log-row"><span class="d">7/3</span><span>RPP入札最適化（汎用KW削除・ファスティング酵素ドリンク190円）</span></div>
+      <div class="log-row"><span class="d">7/3</span><span>RPPパフォーマンスレポート分析（6/19〜6/26）</span></div>
+    </div>
+  </details>
+
+  <div class="foot">limit48 タスクダッシュボード ／ ソース：<code>secretary/notes/task-dashboard.md</code></div>
+
+</div>
