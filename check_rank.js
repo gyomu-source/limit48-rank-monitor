@@ -1,268 +1,244 @@
-// 楽天キーワード順位チェッカー v5
-// v5追加: PR（広告）件数・純粋順位の記録
-
-const https = require('https');
-const http = require('http');
-const zlib = require('zlib');
+const puppeteer = require('puppeteer');
 const fs = require('fs');
 const path = require('path');
-const { URL } = require('url');
 
-const HISTORY_FILE = path.join(__dirname, 'rank_history.json');
 const KEYWORDS = ['ファスティング', '酵素ドリンク'];
-const MAX_PAGES = 5;
-const SHOP_CODE = 'limit48';
-const MAX_REDIRECTS = 5;
+const TARGET_ID = 'limit48'; // 楽天用
+const HISTORY_FILE = path.join(__dirname, 'rank_history.json');
 
-function fetchUrl(targetUrl, redirectCount) {
-  if (redirectCount === undefined) redirectCount = 0;
-  return new Promise((resolve, reject) => {
-    if (redirectCount > MAX_REDIRECTS) {
-      return reject(new Error('Too many redirects'));
-    }
+async function checkRakuten(keyword) {
+  const browser = await puppeteer.launch({
+    headless: "new",
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  });
+  const page = await browser.newPage();
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
 
-    const parsed = new URL(targetUrl);
-    const lib = parsed.protocol === 'https:' ? https : http;
-
-    const options = {
-      hostname: parsed.hostname,
-      path: parsed.pathname + parsed.search,
-      method: 'GET',
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache',
-        'Upgrade-Insecure-Requests': '1',
-        'Sec-Fetch-Dest': 'document',
-        'Sec-Fetch-Mode': 'navigate',
-        'Sec-Fetch-Site': 'none',
-        'Sec-Fetch-User': '?1',
-        'Connection': 'keep-alive',
-      }
-    };
-
-    const req = lib.request(options, (res) => {
-      if ((res.statusCode === 301 || res.statusCode === 302 ||
-           res.statusCode === 307 || res.statusCode === 308)
-          && res.headers.location) {
-        res.resume();
-        const redirectUrl = new URL(res.headers.location, targetUrl).href;
-        return resolve(fetchUrl(redirectUrl, redirectCount + 1));
-      }
-
-      const chunks = [];
-      res.on('data', d => chunks.push(d));
-      res.on('end', () => {
-        const buf = Buffer.concat(chunks);
-        const enc = res.headers['content-encoding'];
-        if (enc === 'gzip') {
-          zlib.gunzip(buf, (err, d) => err ? reject(err) : resolve(d.toString('utf8')));
-        } else if (enc === 'br') {
-          zlib.brotliDecompress(buf, (err, d) => err ? reject(err) : resolve(d.toString('utf8')));
-        } else if (enc === 'deflate') {
-          zlib.inflate(buf, (err, d) => err ? reject(err) : resolve(d.toString('utf8')));
-        } else {
-          resolve(buf.toString('utf8'));
-        }
+  try {
+    const url = `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(keyword)}/`;
+    await page.goto(url, { waitUntil: 'networkidle2', timeout: 60000 });
+    
+    await page.evaluate(async () => {
+      await new Promise((resolve) => {
+        let totalHeight = 0;
+        let distance = 300;
+        let timer = setInterval(() => {
+          let scrollHeight = document.body.scrollHeight;
+          window.scrollBy(0, distance);
+          totalHeight += distance;
+          if(totalHeight >= 2000 || totalHeight >= scrollHeight){
+            clearInterval(timer);
+            resolve();
+          }
+        }, 150);
       });
     });
 
-    req.on('error', reject);
-    req.setTimeout(20000, () => { req.destroy(new Error('Request timeout')); });
-    req.end();
-  });
-}
+    const results = await page.evaluate((targetId) => {
+      const items = Array.from(document.querySelectorAll('.searchresultitem'));
+      let prCount = 0;
+      let organicRank = 0;
+      let targetRank = null;
+      let targetTotalRank = null;
+      let found = false;
 
-function fetchPage(keyword, page) {
-  const url = `https://search.rakuten.co.jp/search/mall/${encodeURIComponent(keyword)}/?p=${page}`;
-  return fetchUrl(url, 0);
-}
-
-function parseInitialState(html) {
-  const m = html.match(/window\.__INITIAL_STATE__\s*=\s*(\{[\s\S]*?);\s*(?:window\.|<\/script>)/);
-  if (!m) return null;
-  try {
-    return JSON.parse(m[1]);
-  } catch(e) {
-    return null;
-  }
-}
-
-// PR（広告）アイテムを検出する
-// 戻り値: { prCount, prShopFound, prSource, prIndexes }
-function analyzePR(search) {
-  const result = {
-    prCount: null,     // null = 検出不能
-    prShopFound: false,
-    prSource: 'unknown',
-    prIndexes: [],     // items配列内でPRの位置（prSource=itemFlagの場合のみ）
-  };
-
-  // Strategy 1: 別配列が存在する場合（adItems / sponsoredItems 等）
-  for (const key of ['adItems', 'sponsoredItems', 'promotionItems', 'prItems', 'topItems']) {
-    if (search[key] && Array.isArray(search[key])) {
-      result.prCount = search[key].length;
-      result.prSource = key;
-      result.prShopFound = search[key].some(item => {
-        const url = item.url || item.originalItemUrl || '';
-        return url.includes('/' + SHOP_CODE + '/');
-      });
-      console.log(`  [PR検出] 別配列「${key}」: ${result.prCount}件${result.prShopFound ? ' ★自店PR出稿中' : ''}`);
-      return result;
-    }
-  }
-
-  // Strategy 2: items配列内にadフラグが存在する場合
-  if (search.items && search.items.length > 0) {
-    const firstItem = search.items[0];
-    const adFields = ['adType', 'isAd', 'sponsored', 'adPosition', 'promotionType', 'mediaType'];
-    const hasAdField = adFields.some(f => f in firstItem);
-
-    if (hasAdField) {
-      search.items.forEach((item, idx) => {
-        const isAd = item.adType != null || item.isAd === true ||
-                     item.sponsored === true || item.mediaType === 'ad' ||
-                     item.adPosition != null || item.promotionType != null;
-        if (isAd) {
-          result.prIndexes.push(idx);
-          const url = item.url || item.originalItemUrl || '';
-          if (url.includes('/' + SHOP_CODE + '/')) result.prShopFound = true;
-        }
-      });
-      result.prCount = result.prIndexes.length;
-      result.prSource = 'itemFlag';
-      console.log(`  [PR検出] itemフラグ: ${result.prCount}件${result.prShopFound ? ' ★自店PR出稿中' : ''}`);
-      return result;
-    }
-  }
-
-  // Strategy 3: 検出できなかった — RPP広告はJavaScript動的読み込みのためサーバーサイドでは取得不可
-  // __INITIAL_STATE__.ichibaSearch.items は純粋な検索結果のみを含む（PR混入なし）
-  // → rank = organicRank が常に成立する
-  console.log(`  [PR非対応] RPP広告は動的読み込みのため取得不可。この順位 = 純粋順位`);
-  return result;
-}
-
-async function findRank(keyword) {
-  let prInfo = null;
-
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    try {
-      const html = await fetchPage(keyword, page);
-      const state = parseInitialState(html);
-
-      if (!state) {
-        const preview = html.replace(/\s+/g, ' ').substring(0, 300);
-        return { rank: null, error: `__INITIAL_STATE__ が取得できませんでした (${preview})` };
-      }
-
-      const search = state.state.data.ichibaSearch;
-      if (!search || !search.items) {
-        return { rank: null, error: '検索結果データが見つかりません' };
-      }
-
-      // ページ1でPR分析
-      if (page === 1) {
-        prInfo = analyzePR(search);
-      }
-
-      const pageSize = (search.pagination && search.pagination.pageSize) || 45;
-      const offset = (page - 1) * pageSize;
-
-      for (let i = 0; i < search.items.length; i++) {
-        const item = search.items[i];
-        const url = item.url || item.originalItemUrl || '';
-        if (url.includes('/' + SHOP_CODE + '/')) {
-          const totalRank = offset + i + 1;
-
-          // 純粋順位の計算
-          // prSource=itemFlag の場合: items配列内にPRが混在 → 自分より前のPR件数を引く
-          // prSource=別配列 の場合: items配列はすでに純粋結果 → そのままが純粋順位
-          let organicRank = totalRank;
-          if (prInfo && prInfo.prSource === 'itemFlag' && page === 1) {
-            const prBeforeUs = prInfo.prIndexes.filter(idx => idx < i).length;
-            organicRank = totalRank - prBeforeUs;
+      for (const item of items) {
+        const isPR = item.querySelector('.service_icon--3_oX1') !== null || item.textContent.includes('PR');
+        if (isPR) {
+          prCount++;
+        } else {
+          organicRank++;
+          const links = Array.from(item.querySelectorAll('a'));
+          const isTarget = links.some(link => link.href.includes(targetId));
+          if (isTarget && !found) {
+            targetRank = organicRank;
+            targetTotalRank = organicRank + prCount;
+            found = true;
           }
-
-          return {
-            rank: totalRank,
-            organicRank,
-            isPR: false,
-            prCount: prInfo ? prInfo.prCount : null,
-            prShopFound: prInfo ? prInfo.prShopFound : false,
-            itemName: item.name,
-            shopCode: SHOP_CODE,
-          };
         }
+        if (organicRank >= 100) break;
       }
+      return { rank: targetTotalRank, organicRank: targetRank, prCount: prCount };
+    }, TARGET_ID);
 
-      if (page < MAX_PAGES) {
-        await new Promise(r => setTimeout(r, 1500));
+    return results;
+  } catch (error) {
+    console.error(`Rakuten Error (${keyword}):`, error.message);
+    return { rank: null, organicRank: null, prCount: 0 };
+  } finally {
+    await browser.close();
+  }
+}
+
+async function checkAmazon(keyword) {
+  const browser = await puppeteer.launch({
+    headless: "new",
+    args: [
+      '--no-sandbox', 
+      '--disable-setuid-sandbox',
+      '--disable-blink-features=AutomationControlled',
+      '--lang=ja-JP,ja'
+    ]
+  });
+  const page = await browser.newPage();
+  
+  // ブラウザ指紋の偽装
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    Object.defineProperty(navigator, 'languages', { get: () => ['ja-JP', 'ja'] });
+    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+  });
+
+  await page.setViewport({ width: 1280, height: 1000 });
+  await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36');
+
+  try {
+    // 1. トップページへ
+    await page.goto("https://www.amazon.co.jp/", { waitUntil: "domcontentloaded", timeout: 180000 });
+    await new Promise(r => setTimeout(r, 5000)); // ページが完全にロードされるまで待機
+
+    // ポップアップを閉じる試行
+    try {
+      const closeButton = await page.$("button[data-action=\'a-popover-close\"]");
+      if (closeButton) {
+        await closeButton.click();
+        console.log("    [Amazon] ポップアップを閉じました。");
+        await new Promise(r => setTimeout(r, 2000));
       }
     } catch (e) {
-      return { rank: null, error: e.message };
+      console.log("    [Amazon] ポップアップを閉じる際にエラー:", e.message);
     }
-  }
+    await new Promise(r => setTimeout(r, 2000));
 
-  // 全ページ検索後: PR枠のみ出稿中（純粋順位は圏外）
-  if (prInfo && prInfo.prShopFound) {
-    return {
-      rank: null,
-      organicRank: null,
-      isPR: true,
-      prCount: prInfo.prCount,
-      prShopFound: true,
-      error: `PR枠のみ出稿中（純粋順位 ${MAX_PAGES * 45}位以内に未登場）`,
-    };
-  }
 
-  return {
-    rank: null,
-    organicRank: null,
-    isPR: false,
-    prCount: prInfo ? prInfo.prCount : null,
-    error: `${MAX_PAGES}ページ（${MAX_PAGES * 45}位）以内に未登場`,
-  };
+
+    // 2. お届け先設定 (GitHub Actions 環境での安定性のため、一時的に無効化)
+    console.log("    [Amazon] お届け先設定は一時的に無効化されています。");
+    await new Promise(r => setTimeout(r, 2000));
+
+    // 3. 検索 (常にURLを直接開く)
+    console.log("    [Amazon] 検索ボックス操作をスキップし、URLを直接開きます。");
+    const searchUrl = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
+    await page.goto(searchUrl, { waitUntil: "networkidle2", timeout: 60000 });
+    
+    // ロボット確認
+    if (await page.$("#captchacharacters")) {
+      console.log("    [Amazon] ロボット確認画面を検知しました。");
+      return { rank: null, organicRank: null, prCount: 0 };
+    }
+
+    // じっくりスクロール
+    for (let i = 0; i < 10; i++) {
+      await page.evaluate(() => window.scrollBy(0, 500));
+      await new Promise(r => setTimeout(r, 800 + Math.random() * 500));
+    }
+    
+    await new Promise(r => setTimeout(r, 2000));
+
+    const results = await page.evaluate(() => {
+      const items = Array.from(document.querySelectorAll(".s-result-item[data-asin]"));
+      let prCount = 0;
+      let organicRank = 0;
+      let targetRank = null;
+      let targetTotalRank = null;
+      let foundInOrganic = false;
+
+      console.log(`[Amazon Evaluate] Found ${items.length} items.`);
+
+      for (const item of items) {
+        const asin = item.getAttribute("data-asin");
+        if (asin === "") {
+          console.log("[Amazon Evaluate] Skipping item with empty ASIN.");
+          continue;
+        }
+
+        // スポンサー判定 (より詳細に)
+        const isSponsored = item.querySelector(".puis-sponsored-label-text, .s-label-popover-default, .s-sponsored-label-info-icon, .s-label-popover, .AdHolder") !== null || 
+                            item.innerText.includes("スポンサー") || 
+                            item.innerText.includes("Sponsored") ||
+                            item.innerHTML.includes("sponsored-label");
+        
+        const titleEl = item.querySelector("h2");
+        const title = titleEl ? titleEl.textContent.trim() : "";
+        if (!title) {
+          console.log(`[Amazon Evaluate] Skipping item ${asin} with no title.`);
+          continue;
+        }
+
+        console.log(`[Amazon Evaluate] Processing item ${asin}, Title: ${title}, Sponsored: ${isSponsored}`);
+
+        if (isSponsored) {
+          prCount++;
+        } else {
+          organicRank++;
+          const lowerTitle = title.toLowerCase();
+          const isTarget = lowerTitle.includes("limit") || 
+                           lowerTitle.includes("リムイット") || 
+                           lowerTitle.includes("lim:it");
+          
+          if (isTarget && !foundInOrganic) {
+            targetRank = organicRank;
+            targetTotalRank = organicRank + prCount;
+            foundInOrganic = true;
+            console.log(`[Amazon Evaluate] Target found for ${asin} at organic rank ${organicRank}, total rank ${targetTotalRank}`);
+          }
+        }
+        if (organicRank >= 100) {
+          console.log("[Amazon Evaluate] Reached 100 organic ranks, stopping.");
+          break;
+        }
+      }
+      console.log(`[Amazon Evaluate] Final ranks: targetRank=${targetRank}, organicRank=${organicRank}, prCount=${prCount}`);
+      return { rank: targetTotalRank, organicRank: targetRank, prCount: prCount };
+    });
+
+    return results;
+  } catch (error) {
+    console.error(`Amazon Error (${keyword}):`, error.message);
+    return { rank: null, organicRank: null, prCount: 0 };
+  }
+  finally {
+    await browser.close();
+  }
 }
 
-async function main() {
-  const now = new Date();
-  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const dateStr = `${String(jst.getUTCMonth()+1).padStart(2,'0')}/${String(jst.getUTCDate()).padStart(2,'0')}`;
-  const timeStr = `${String(jst.getUTCHours()).padStart(2,'0')}:${String(jst.getUTCMinutes()).padStart(2,'0')}`;
+async function run() {
+  console.log(`[${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })} JST] 順位チェック開始 (楽天 & Amazon)`);
+  
+  const results = {
+    rakuten: {},
+    amazon: {}
+  };
 
-  console.log(`[${dateStr} ${timeStr} JST] 順位チェック開始`);
-
-  const results = {};
   for (const kw of KEYWORDS) {
-    console.log(`  「${kw}」を検索中...`);
-    const r = await findRank(kw);
-    results[kw] = r;
-
-    if (r.isPR) {
-      console.log(`  → PR枠のみ出稿中（純粋順位：圏外）PR件数: ${r.prCount}`);
-    } else if (r.rank) {
-      const prInfo = r.prCount !== null ? ` PR${r.prCount}件` : '';
-      const organicInfo = (r.organicRank && r.organicRank !== r.rank)
-        ? ` / 純粋${r.organicRank}位` : '';
-      console.log(`  → ${r.rank}位${organicInfo}${prInfo}`);
-    } else {
-      console.log(`  → 圏外（${r.error}）`);
-    }
+    console.log(`  楽天: 「${kw}」を検索中...`);
+    results.rakuten[kw] = await checkRakuten(kw);
+    console.log(`    → トータル${results.rakuten[kw].rank || '圏外'}位 (PR${results.rakuten[kw].prCount}件)`);
+    
+    console.log(`  Amazon: 「${kw}」を検索中...`);
+    results.amazon[kw] = await checkAmazon(kw);
+    console.log(`    → トータル${results.amazon[kw].rank || '圏外'}位 (スポンサー${results.amazon[kw].prCount}件)`);
   }
 
   let history = [];
   if (fs.existsSync(HISTORY_FILE)) {
-    try { history = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8')); } catch(e) {}
+    history = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'));
   }
-  history.push({ timestamp: now.toISOString(), dateStr, timeStr, results });
-  if (history.length > 180) history = history.slice(-180);
 
-  fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2), 'utf8');
-  console.log(`[完了] rank_history.json 更新（${history.length}件）`);
+  const now = new Date();
+  const jstNow = new Date(now.getTime() + (9 * 60 * 60 * 1000));
+  
+  history.push({
+    timestamp: now.toISOString(),
+    dateStr: `${String(jstNow.getUTCMonth() + 1).padStart(2, '0')}/${String(jstNow.getUTCDate()).padStart(2, '0')}`,
+    timeStr: `${String(jstNow.getUTCHours()).padStart(2, '0')}:${String(jstNow.getUTCMinutes()).padStart(2, '0')}`,
+    results: results
+  });
+
+  if (history.length > 100) history = history.slice(-100);
+
+  fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+  console.log(`[完了] ${path.basename(HISTORY_FILE)} 更新（${history.length}件）`);
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+run();
