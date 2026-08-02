@@ -1,22 +1,5 @@
 [
   {
-    "timestamp": "2026-07-05T22:44:44.769Z",
-    "dateStr": "07/06",
-    "timeStr": "07:44",
-    "results": {
-      "ファスティング": {
-        "rank": 11,
-        "itemName": "クーポンで10％OFF！3本以上で専用ボトル付き！2日間だけでOK！リムイット48Plus ファスティング専用 5冠達成 700ml ガイドブック付 コンブチャ 酵素ドリンク 美味しい ファスティング 酵素 ダイエット ドリンク 断食",
-        "shopCode": "limit48"
-      },
-      "酵素ドリンク": {
-        "rank": 32,
-        "itemName": "クーポンで10％OFF！3本以上で専用ボトル付き！2日間だけでOK！リムイット48Plus ファスティング専用 5冠達成 700ml ガイドブック付 コンブチャ 酵素ドリンク 美味しい ファスティング 酵素 ダイエット ドリンク 断食",
-        "shopCode": "limit48"
-      }
-    }
-  },
-  {
     "timestamp": "2026-07-06T12:32:56.648Z",
     "dateStr": "07/06",
     "timeStr": "21:32",
@@ -3003,6 +2986,37 @@
         "酵素ドリンク": {
           "rank": 22,
           "organicRank": 17,
+          "prCount": 5
+        }
+      },
+      "amazon": {
+        "ファスティング": {
+          "rank": null,
+          "organicRank": null,
+          "prCount": 0
+        },
+        "酵素ドリンク": {
+          "rank": null,
+          "organicRank": null,
+          "prCount": 0
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-08-02T22:43:22.570Z",
+    "dateStr": "08/03",
+    "timeStr": "07:43",
+    "results": {
+      "rakuten": {
+        "ファスティング": {
+          "rank": 19,
+          "organicRank": 14,
+          "prCount": 6
+        },
+        "酵素ドリンク": {
+          "rank": 20,
+          "organicRank": 15,
           "prCount": 5
         }
       },
