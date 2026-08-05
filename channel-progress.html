@@ -1,0 +1,303 @@
+<title>3チャネル配信進捗｜limit48</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --paper: #f1f2ec;
+    --paper-2: #e6e7de;
+    --ink: #22261f;
+    --ink-muted: #62685a;
+    --ink-faint: #8b9080;
+    --border: #d7d9cc;
+    --rakuten: #b6392f;
+    --rakuten-soft: #b6392f55;
+    --shopify: #2f6f8f;
+    --shopify-soft: #2f6f8f55;
+    --ameba: #1f8a52;
+    --ameba-soft: #1f8a5255;
+    --hold: #b3791f;
+    --hold-soft: #b3791f4a;
+    --code-bg: #e6e7de;
+    --shadow: 0 1px 2px rgba(30, 34, 20, 0.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #1a1c16;
+      --paper-2: #23261e;
+      --ink: #e9ebe0;
+      --ink-muted: #a4a998;
+      --ink-faint: #6d7263;
+      --border: #34382c;
+      --rakuten: #e0776a;
+      --rakuten-soft: #e0776a4a;
+      --shopify: #6fabca;
+      --shopify-soft: #6fabca4a;
+      --ameba: #5cc98d;
+      --ameba-soft: #5cc98d4a;
+      --hold: #dba64a;
+      --hold-soft: #dba64a4a;
+      --code-bg: #23261e;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #1a1c16; --paper-2: #23261e; --ink: #e9ebe0; --ink-muted: #a4a998; --ink-faint: #6d7263;
+    --border: #34382c; --rakuten: #e0776a; --rakuten-soft: #e0776a4a; --shopify: #6fabca; --shopify-soft: #6fabca4a;
+    --ameba: #5cc98d; --ameba-soft: #5cc98d4a; --hold: #dba64a; --hold-soft: #dba64a4a; --code-bg: #23261e;
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  }
+  :root[data-theme="light"] {
+    --paper: #f1f2ec; --paper-2: #e6e7de; --ink: #22261f; --ink-muted: #62685a; --ink-faint: #8b9080;
+    --border: #d7d9cc; --rakuten: #b6392f; --rakuten-soft: #b6392f55; --shopify: #2f6f8f; --shopify-soft: #2f6f8f55;
+    --ameba: #1f8a52; --ameba-soft: #1f8a5255; --hold: #b3791f; --hold-soft: #b3791f4a; --code-bg: #e6e7de;
+    --shadow: 0 1px 2px rgba(30, 34, 20, 0.05);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic Medium", "Yu Gothic", "Noto Sans JP", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { padding: 48px 22px 72px; }
+  .page { max-width: 860px; margin: 0 auto; }
+
+  .masthead { margin-bottom: 40px; }
+  .eyebrow {
+    font-size: 11.5px; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 700;
+    color: var(--ink-faint); font-family: "SF Mono", "Menlo", ui-monospace, monospace;
+  }
+  h1 {
+    font-size: clamp(26px, 4vw, 34px); margin: 6px 0 10px; letter-spacing: -0.01em; font-weight: 800;
+    text-wrap: balance; line-height: 1.25;
+  }
+  .lede { font-size: 15px; color: var(--ink-muted); line-height: 1.75; max-width: 560px; }
+  .lede b { color: var(--ink); font-weight: 700; }
+  .updated { font-size: 12.5px; color: var(--ink-faint); margin-top: 14px; font-variant-numeric: tabular-nums; }
+
+  .totalbar-wrap { margin: 28px 0 44px; }
+  .totalbar {
+    display: flex; height: 30px; border-radius: 3px; overflow: hidden; border: 1px solid var(--border);
+  }
+  .totalbar span { display: block; height: 100%; }
+  .totalbar-legend {
+    display: flex; flex-wrap: wrap; gap: 18px; margin-top: 12px; font-size: 12px; color: var(--ink-muted);
+  }
+  .totalbar-legend .item { display: flex; align-items: center; gap: 6px; }
+  .totalbar-legend .dot { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+
+  .channel {
+    padding: 30px 0 34px; border-top: 1px solid var(--border);
+  }
+  .channel:first-of-type { border-top: 1px solid var(--border); }
+  .channel-head {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    margin-bottom: 4px;
+  }
+  .channel-name {
+    font-size: 21px; font-weight: 800; letter-spacing: -0.005em;
+  }
+  .channel-stat {
+    font-family: "SF Mono", "Menlo", ui-monospace, monospace; font-size: 13px; font-variant-numeric: tabular-nums;
+    color: var(--ink-muted); white-space: nowrap;
+  }
+  .channel-stat b { color: var(--ink); font-size: 15px; }
+
+  .bar-track {
+    display: flex; height: 10px; border-radius: 2px; overflow: hidden; background: var(--paper-2);
+    margin: 16px 0 10px; border: 1px solid var(--border);
+  }
+  .bar-track span { display: block; height: 100%; }
+
+  .bar-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--ink-muted); margin-bottom: 18px; }
+  .bar-legend .item { display: flex; align-items: center; gap: 6px; }
+  .bar-legend .dot { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+
+  .detail-grid {
+    display: grid; grid-template-columns: 1fr; gap: 6px; font-size: 13.5px; color: var(--ink-muted);
+    margin-bottom: 16px;
+  }
+  .detail-grid .row { display: flex; gap: 8px; }
+  .detail-grid .label { flex: none; width: 92px; color: var(--ink-faint); }
+  .detail-grid .value { color: var(--ink); }
+
+  code {
+    font-family: "SF Mono", "Menlo", ui-monospace, monospace; font-size: 12.5px;
+    background: var(--code-bg); padding: 2px 6px; border-radius: 3px; word-break: break-all;
+  }
+
+  .hold-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+  .hold-list li { font-size: 13px; color: var(--ink-muted); display: flex; gap: 8px; }
+  .hold-list .tag {
+    flex: none; font-family: "SF Mono", "Menlo", ui-monospace, monospace; font-size: 11px; font-weight: 700;
+    color: var(--hold); padding-top: 1px;
+  }
+
+  .note {
+    font-size: 12.5px; color: var(--ink-faint); margin-top: 4px; line-height: 1.6;
+  }
+  .note.warn { color: var(--hold); }
+
+  /* Ameba timeline */
+  .timeline-scroll { overflow-x: auto; margin: 18px 0 6px; padding-bottom: 4px; }
+  .timeline {
+    display: flex; gap: 4px; min-width: max-content;
+  }
+  .tl-day {
+    width: 34px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .tl-chip {
+    width: 34px; height: 34px; border-radius: 3px; display: flex; align-items: center; justify-content: center;
+    font-family: "SF Mono", "Menlo", ui-monospace, monospace; font-size: 11px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .tl-chip.published { background: var(--ameba); color: var(--paper); }
+  .tl-chip.scheduled { background: var(--ameba-soft); color: var(--ameba); border: 1px solid var(--ameba); }
+  .tl-date { font-size: 10px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+  .foot { margin-top: 46px; padding-top: 18px; border-top: 1px solid var(--border); font-size: 12px; color: var(--ink-faint); }
+
+  @media (max-width: 480px) {
+    .channel-head { flex-direction: column; align-items: flex-start; }
+    .detail-grid .label { width: 78px; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <div class="eyebrow">Limit48 — Content Ops</div>
+    <h1>3チャネル配信進捗</h1>
+    <p class="lede">
+      同じ元記事を、<b>楽天コンテンツページ・Shopifyブログ・Amebaブログ</b>の3チャネルへ展開している状況をまとめたもの。
+      楽天で書き上がった記事プール（現在97本）を分母に、各チャネルの変換・投稿がどこまで進んだかを示す。
+    </p>
+    <div class="updated">最終更新：2026年8月5日</div>
+  </header>
+
+  <div class="totalbar-wrap">
+    <div class="totalbar" role="img" aria-label="全体進捗：楽天公開37本、楽天下書き60本、保留4本">
+      <span style="width:36.6%; background:var(--rakuten);"></span>
+      <span style="width:59.4%; background:var(--rakuten-soft);"></span>
+      <span style="width:4.0%; background:var(--hold);"></span>
+    </div>
+    <div class="totalbar-legend">
+      <span class="item"><span class="dot" style="background:var(--rakuten)"></span>楽天・公開済み 37本</span>
+      <span class="item"><span class="dot" style="background:var(--rakuten-soft)"></span>楽天・執筆済み未公開 60本</span>
+      <span class="item"><span class="dot" style="background:var(--hold)"></span>保留（未執筆） 4本</span>
+    </div>
+  </div>
+
+  <!-- 楽天 -->
+  <section class="channel">
+    <div class="channel-head">
+      <div class="channel-name" style="color:var(--rakuten)">楽天コンテンツページ</div>
+      <div class="channel-stat"><b>37</b> / 101 公開済み</div>
+    </div>
+
+    <div class="bar-track" role="img" aria-label="楽天：公開37、下書き60、保留4">
+      <span style="width:36.6%; background:var(--rakuten);"></span>
+      <span style="width:59.4%; background:var(--rakuten-soft);"></span>
+      <span style="width:4.0%; background:var(--hold);"></span>
+    </div>
+    <div class="bar-legend">
+      <span class="item"><span class="dot" style="background:var(--rakuten)"></span>公開済み VOL.0〜36</span>
+      <span class="item"><span class="dot" style="background:var(--rakuten-soft)"></span>下書き Vol.37〜96</span>
+      <span class="item"><span class="dot" style="background:var(--hold)"></span>保留 4本</span>
+    </div>
+
+    <div class="detail-grid">
+      <div class="row"><span class="label">下書き</span><span class="value">Vol.37〜96（60本）。<b style="color:var(--ink)">Vol.37は現在テスト中</b>（Manus経由でRMS下書き保存を実施・結果待ち）</span></div>
+      <div class="row"><span class="label">ファイル</span><span class="value"><code>rakuten/content-articles/rakuten/VolXXX/article.md</code></span></div>
+      <div class="row"><span class="label">マスター</span><span class="value"><code>rakuten/content-articles/articles/100-article-master.md</code></span></div>
+    </div>
+
+    <ul class="hold-list">
+      <li><span class="tag">F-05</span>医師監修記事 — 監修の事実確認資料待ち</li>
+      <li><span class="tag">F-06</span>お客様体験談 — 実際のレビューデータ待ち</li>
+      <li><span class="tag">F-07</span>ランキング実績記事 — 累計販売数の根拠資料待ち</li>
+      <li><span class="tag">F-10</span>定期便メリット記事 — 割引率・条件の資料待ち</li>
+    </ul>
+  </section>
+
+  <!-- Shopify -->
+  <section class="channel">
+    <div class="channel-head">
+      <div class="channel-name" style="color:var(--shopify)">Shopifyブログ</div>
+      <div class="channel-stat"><b>20</b> / 97 公開済み</div>
+    </div>
+
+    <div class="bar-track" role="img" aria-label="Shopify：公開20、未変換77">
+      <span style="width:20.6%; background:var(--shopify);"></span>
+      <span style="width:79.4%; background:var(--paper-2);"></span>
+    </div>
+    <div class="bar-legend">
+      <span class="item"><span class="dot" style="background:var(--shopify)"></span>公開済み Vol.1〜20</span>
+      <span class="item"><span class="dot" style="background:var(--paper-2); border:1px solid var(--border)"></span>未変換 Vol.21〜（77本）</span>
+    </div>
+
+    <div class="detail-grid">
+      <div class="row"><span class="label">下書き・保留</span><span class="value">なし（Vol.21以降は未受領。Ameba作業が一区切りしたため再開可）</span></div>
+      <div class="row"><span class="label">ファイル</span><span class="value"><code>rakuten/content-articles/contents/shopify/volNN_shopify_xxx.md</code></span></div>
+      <div class="row"><span class="label">投稿スクリプト</span><span class="value"><code>contents/shopify/integration/publish_articles.js</code></span></div>
+    </div>
+  </section>
+
+  <!-- Ameba -->
+  <section class="channel">
+    <div class="channel-head">
+      <div class="channel-name" style="color:var(--ameba)">Amebaブログ</div>
+      <div class="channel-stat"><b>1</b> 公開済み・<b>19</b> 予約中</div>
+    </div>
+
+    <div class="bar-track" role="img" aria-label="Ameba：公開1、予約19、未変換77">
+      <span style="width:1.0%; background:var(--ameba);"></span>
+      <span style="width:19.6%; background:var(--ameba-soft);"></span>
+      <span style="width:79.4%; background:var(--paper-2);"></span>
+    </div>
+    <div class="bar-legend">
+      <span class="item"><span class="dot" style="background:var(--ameba)"></span>公開済み Vol.1</span>
+      <span class="item"><span class="dot" style="background:var(--ameba-soft)"></span>予約中 Vol.2〜20</span>
+      <span class="item"><span class="dot" style="background:var(--paper-2); border:1px solid var(--border)"></span>未変換 Vol.21〜</span>
+    </div>
+
+    <div class="timeline-scroll">
+      <div class="timeline">
+        <div class="tl-day"><div class="tl-chip published">V1</div><div class="tl-date">8/5</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V2</div><div class="tl-date">8/6</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V3</div><div class="tl-date">8/7</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V4</div><div class="tl-date">8/8</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V5</div><div class="tl-date">8/9</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V6</div><div class="tl-date">8/10</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V7</div><div class="tl-date">8/11</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V8</div><div class="tl-date">8/12</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V9</div><div class="tl-date">8/13</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V10</div><div class="tl-date">8/14</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V11</div><div class="tl-date">8/15</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V12</div><div class="tl-date">8/16</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V13</div><div class="tl-date">8/17</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V14</div><div class="tl-date">8/18</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V15</div><div class="tl-date">8/19</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V16</div><div class="tl-date">8/20</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V17</div><div class="tl-date">8/21</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V18</div><div class="tl-date">8/22</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V19</div><div class="tl-date">8/23</div></div>
+        <div class="tl-day"><div class="tl-chip scheduled">V20</div><div class="tl-date">8/24</div></div>
+      </div>
+    </div>
+    <p class="note">毎日21:00に1本ずつ自動公開（Vol.1のみ検証のため12:00）。日付が来ると自動的に緑（公開済み）へ切り替わる想定。</p>
+
+    <div class="detail-grid" style="margin-top:14px;">
+      <div class="row"><span class="label">下書き・保留</span><span class="value">なし（Vol.21以降は未受領）</span></div>
+      <div class="row"><span class="label">公開URL</span><span class="value"><code>https://ameblo.jp/limit48/entry-12974769363.html</code>（Vol.1）</span></div>
+      <div class="row"><span class="label">ファイル</span><span class="value"><code>rakuten/content-articles/contents/ameba/volNN_ameba_xxx.md</code></span></div>
+      <div class="row"><span class="label">画像</span><span class="value"><code>contents/ameba/images/volNN/volNN_01.jpg</code></span></div>
+      <div class="row"><span class="label">投稿スクリプト</span><span class="value"><code>contents/ameba/integration/post_ameba.js</code></span></div>
+    </div>
+    <p class="note warn">既知の軽微な課題：ハッシュタグが8件中6〜7件しか反映されないことがある（実害小・保留中）</p>
+  </section>
+
+  <div class="foot">limit48 コンテンツ配信パイプライン ／ 秘書室（鷹橋 蓮）</div>
+
+</div>
