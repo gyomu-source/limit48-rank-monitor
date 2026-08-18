@@ -1,36 +1,5 @@
 [
   {
-    "timestamp": "2026-07-08T10:31:59.595Z",
-    "dateStr": "07/08",
-    "timeStr": "19:31",
-    "results": {
-      "rakuten": {
-        "ファスティング": {
-          "rank": 9,
-          "organicRank": 9,
-          "prCount": 0
-        },
-        "酵素ドリンク": {
-          "rank": 14,
-          "organicRank": 14,
-          "prCount": 0
-        }
-      },
-      "amazon": {
-        "ファスティング": {
-          "rank": null,
-          "organicRank": null,
-          "prCount": 0
-        },
-        "酵素ドリンク": {
-          "rank": 34,
-          "organicRank": 34,
-          "prCount": 0
-        }
-      }
-    }
-  },
-  {
     "timestamp": "2026-07-08T10:37:21.189Z",
     "dateStr": "07/08",
     "timeStr": "19:37",
@@ -3098,6 +3067,37 @@
           "rank": null,
           "organicRank": null,
           "prCount": 0
+        }
+      }
+    }
+  },
+  {
+    "timestamp": "2026-08-18T06:57:37.749Z",
+    "dateStr": "08/18",
+    "timeStr": "15:57",
+    "results": {
+      "rakuten": {
+        "ファスティング": {
+          "rank": 17,
+          "organicRank": 12,
+          "prCount": 6
+        },
+        "酵素ドリンク": {
+          "rank": 18,
+          "organicRank": 13,
+          "prCount": 5
+        }
+      },
+      "amazon": {
+        "ファスティング": {
+          "rank": 37,
+          "organicRank": 25,
+          "prCount": 12
+        },
+        "酵素ドリンク": {
+          "rank": 5,
+          "organicRank": 1,
+          "prCount": 12
         }
       }
     }
