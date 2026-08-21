@@ -213,6 +213,43 @@
     .attn-row { grid-template-columns: 1fr; }
     .attn-date { display: none; }
   }
+
+  /* --- ガントタイムライン（RPP・9月SALE準備） --- */
+  .gantt-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-muted); }
+  .gantt-legend .item { display: flex; align-items: center; gap: 5px; }
+  .gantt-legend .swatch { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
+  .gantt-board { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); background: var(--surface); }
+  .gantt-scroll { overflow-x: auto; }
+  .gantt-wrap { min-width: 900px; position: relative; }
+  .gantt-row { display: flex; border-bottom: 1px solid var(--border); }
+  .gantt-row:last-child { border-bottom: none; }
+  .gantt-row .g-label { width: 190px; flex-shrink: 0; padding: 8px 12px; font-size: 12px; font-weight: 600; display: flex; align-items: center; border-right: 1px solid var(--border); background: var(--surface); }
+  .gantt-row .g-label small { display: block; font-weight: 400; color: var(--text-muted); font-size: 10.5px; margin-top: 2px; }
+  .gantt-row .g-track { flex: 1; position: relative; display: grid; grid-template-columns: repeat(22, 1fr); }
+  .gantt-header { display: flex; border-bottom: 1px solid var(--border); background: var(--surface-2); }
+  .gantt-header .g-label { background: var(--surface-2); border-right: 1px solid var(--border); }
+  .gantt-header .g-track { flex: 1; position: relative; display: grid; grid-template-columns: repeat(22, 1fr); }
+  .g-daycell { border-right: 1px dashed var(--border); }
+  .g-daycell:last-child { border-right: none; }
+  .g-daycell.weekend { background: var(--surface-2); }
+  .g-daylabel { text-align: center; padding: 6px 2px 5px; font-size: 10px; color: var(--text-muted); border-right: 1px dashed var(--border); }
+  .g-daylabel:last-child { border-right: none; }
+  .g-daylabel b { display: block; color: var(--text); font-size: 11.5px; }
+  .g-daylabel.weekend { background: var(--surface-2); }
+  .g-daylabel.today b { color: var(--critical); }
+  .g-phase { position: absolute; top: 0; bottom: 0; z-index: 0; padding: 3px 6px; font-size: 10.5px; font-weight: 700; pointer-events: none; }
+  .g-phase.marathon { background: var(--warning-soft); color: var(--warning); }
+  .g-phase.sale { background: var(--critical-soft); color: var(--critical); }
+  .g-bar { grid-row: 1; align-self: center; height: 22px; border-radius: 6px; margin: 6px 2px; display: flex; align-items: center; padding: 0 8px; font-size: 10.5px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; box-shadow: var(--shadow); z-index: 1; }
+  .g-bar.action { background: var(--success); }
+  .g-bar.decision { background: var(--warning); }
+  .g-bar.waiting { background: repeating-linear-gradient(135deg, var(--warning) 0 7px, var(--success) 7px 14px); }
+  .g-milestone { grid-row: 1; align-self: center; width: 12px; height: 12px; background: var(--critical); border-radius: 2px; transform: rotate(45deg); box-shadow: var(--shadow); z-index: 2; justify-self: center; position: relative; }
+  .g-milestone.decision { background: var(--warning); }
+  .g-milestone-label { position: absolute; top: -18px; left: 50%; transform: translateX(-50%) rotate(-45deg); white-space: nowrap; font-size: 9.5px; font-weight: 700; color: var(--critical); }
+  .g-milestone.decision .g-milestone-label { color: var(--warning); }
+  .gantt-skip { font-size: 12px; color: var(--text-muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; }
+  .gantt-skip b { color: var(--critical); }
 </style>
 
 <div class="page">
@@ -288,6 +325,118 @@
         <span class="attn-title">Shopify系タスク2件（アフィリエイトタグ確認・Metaピクセル確認）<span class="attn-detail">KOMOJU・Seal Subscriptionsは完了。Dawn関連2件は方針変更（Dawnのままでいく）で削除</span></span>
         <span class="chip open">未着手</span>
       </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-head">
+      <h2>実行タイムライン：RPP新規獲得・9月SALE準備</h2>
+      <span class="count">8/21〜9/11</span>
+    </div>
+    <div class="gantt-legend">
+      <span class="item"><span class="swatch" style="background:var(--success);"></span>実行中のタスク</span>
+      <span class="item"><span class="swatch" style="background:repeating-linear-gradient(135deg, var(--warning) 0 4px, var(--success) 4px 8px);"></span>外部回答待ち</span>
+      <span class="item"><span class="swatch" style="background:var(--warning);"></span>判断・確定ポイント</span>
+      <span class="item"><span class="swatch" style="background:var(--warning-soft); border:1px solid var(--warning);"></span>お買い物マラソン期間</span>
+      <span class="item"><span class="swatch" style="background:var(--critical-soft); border:1px solid var(--critical);"></span>スーパーSALE期間</span>
+    </div>
+    <div class="gantt-board">
+      <div class="gantt-scroll">
+        <div class="gantt-wrap">
+
+          <div class="gantt-header">
+            <div class="g-label">日付</div>
+            <div class="g-track">
+              <div class="g-daylabel today"><b>21</b>金</div>
+              <div class="g-daylabel weekend"><b>22</b>土</div>
+              <div class="g-daylabel weekend"><b>23</b>日</div>
+              <div class="g-daylabel"><b>24</b>月</div>
+              <div class="g-daylabel"><b>25</b>火</div>
+              <div class="g-daylabel"><b>26</b>水</div>
+              <div class="g-daylabel"><b>27</b>木</div>
+              <div class="g-daylabel"><b>28</b>金</div>
+              <div class="g-daylabel weekend"><b>29</b>土</div>
+              <div class="g-daylabel weekend"><b>30</b>日</div>
+              <div class="g-daylabel"><b>31</b>月</div>
+              <div class="g-daylabel"><b>9/1</b>火</div>
+              <div class="g-daylabel"><b>2</b>水</div>
+              <div class="g-daylabel"><b>3</b>木</div>
+              <div class="g-daylabel"><b>4</b>金</div>
+              <div class="g-daylabel weekend"><b>5</b>土</div>
+              <div class="g-daylabel weekend"><b>6</b>日</div>
+              <div class="g-daylabel"><b>7</b>月</div>
+              <div class="g-daylabel"><b>8</b>火</div>
+              <div class="g-daylabel"><b>9</b>水</div>
+              <div class="g-daylabel"><b>10</b>木</div>
+              <div class="g-daylabel"><b>11</b>金</div>
+            </div>
+          </div>
+
+          <div class="g-phase marathon" style="left:calc(190px + (100% - 190px) * 3 / 22); width:calc((100% - 190px) * 4 / 22);">🛍 マラソン</div>
+          <div class="g-phase sale" style="left:calc(190px + (100% - 190px) * 14 / 22); width:calc((100% - 190px) * 8 / 22);">🎉 SALE</div>
+
+          <div class="gantt-row">
+            <div class="g-label">RPP安全圏6語<small>登録・配信・観察</small></div>
+            <div class="g-track">
+              <div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div>
+              <div class="g-bar action" style="grid-column:1 / 9;">配信・観察</div>
+            </div>
+          </div>
+
+          <div class="gantt-row">
+            <div class="g-label">予算消化率40%の原因診断<small>Manus回答待ち</small></div>
+            <div class="g-track">
+              <div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div>
+              <div class="g-bar waiting" style="grid-column:1 / 8;">回答待ち→反映</div>
+            </div>
+          </div>
+
+          <div class="gantt-row">
+            <div class="g-label">次点2語（¥405/¥418）<small>追加テスト判断</small></div>
+            <div class="g-track">
+              <div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div>
+              <div class="g-bar decision" style="grid-column:5 / 8;">判断</div>
+            </div>
+          </div>
+
+          <div class="gantt-row">
+            <div class="g-label">目安CPC再確認<small>セール接近時の実測</small></div>
+            <div class="g-track">
+              <div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div>
+              <div class="g-bar action" style="grid-column:8 / 13;">再確認・比較</div>
+            </div>
+          </div>
+
+          <div class="gantt-row">
+            <div class="g-label">既存勝ち筋CPC・予算配分<small>30/20/10万円の確定</small></div>
+            <div class="g-track">
+              <div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div>
+              <div class="g-bar decision" style="grid-column:8 / 13;">確定</div>
+            </div>
+          </div>
+
+          <div class="gantt-row">
+            <div class="g-label">特集ページ・バナー入稿<small>Manus実行</small></div>
+            <div class="g-track">
+              <div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div>
+              <div class="g-bar action" style="grid-column:13 / 15;">入稿完了</div>
+            </div>
+          </div>
+
+          <div class="gantt-row">
+            <div class="g-label">🎉 スーパーSALE本番<small>9/5=誘導付きクーポン集合広告</small></div>
+            <div class="g-track">
+              <div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell weekend"></div><div class="g-daycell weekend"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div><div class="g-daycell"></div>
+              <div class="g-milestone" style="grid-column:15;"><span class="g-milestone-label">9/4開始</span></div>
+              <div class="g-milestone decision" style="grid-column:16;"><span class="g-milestone-label">9/5広告</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <div class="gantt-skip">
+      <b>今回は見送り</b>：ファスティング(¥606)／3日間ファスティング(¥671)／週末ファスティング(¥721)／酵素ドリンク(¥735)／酵素ドリンク無添加(¥3,212) — セールでさらにCPCが上がるリスクを踏まえ非対象。来月以降、平常期に目安CPCを取り直してから再検討。
     </div>
   </section>
 
